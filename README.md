@@ -4,6 +4,8 @@ Official [Claude Code](https://claude.ai) plugin marketplace for [Ory](https://g
 
 ## Installation
 
+In Claude Code, run:
+
 ```bash
-claude plugin add --marketplace github:ory-corp/claude-plugins
+/plugin marketplace add ory/claude-plugins
 ```
