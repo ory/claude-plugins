@@ -1,0 +1,20 @@
+{
+  "name": "ory",
+  "owner": {
+    "name": "Ory Corp",
+    "email": "office@ory.sh"
+  },
+  "metadata": {
+    "description": "Official Ory plugins for Claude Code",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "lumen",
+      "source": {
+        "source": "github",
+        "repo": "ory/lumen"
+      }
+    }
+  ]
+}
