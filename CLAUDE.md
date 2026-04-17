@@ -21,10 +21,12 @@ Add an entry to the `plugins` array in `.claude-plugin/marketplace.json`:
 {
   "name": "your-plugin",
   "source": {
-    "source": "github",
-    "repo": "ory/your-plugin"
+    "source": "url",
+    "url": "https://github.com/ory/your-plugin.git"
   }
 }
 ```
+
+Use `"source": "url"` with a full HTTPS URL. The `"source": "github"` shorthand is not supported by the Claude Code plugin installer and will cause SSH authentication failures for users without GitHub SSH keys configured.
 
 The plugin repository must contain a `.claude-plugin/plugin.json` with the full plugin metadata.
