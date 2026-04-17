@@ -12,8 +12,8 @@
     {
       "name": "lumen",
       "source": {
-        "source": "github",
-        "repo": "ory/lumen"
+        "source": "url",
+        "url": "https://github.com/ory/lumen.git"
       }
     }
   ]
