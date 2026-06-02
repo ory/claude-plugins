@@ -15,6 +15,12 @@
         "source": "url",
         "url": "https://github.com/ory/lumen.git"
       }
+    },
+    {
+      "name": "ory-agent-plugin",
+      "source": "./plugins/ory-agent-plugin",
+      "category": "development",
+      "description": "Ory plugin for Claude Code: scaffolding skills, a local Ory instance, and authentication, authorization, and audit for every tool call"
     }
   ]
 }

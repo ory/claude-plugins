@@ -1,0 +1,10 @@
+{
+  "name": "ory-agent-plugin",
+  "version": "0.3.0",
+  "description": "Ory plugin for Claude Code: scaffolding skills, a local Ory instance, and authentication, authorization, and audit for every tool call",
+  "author": {
+    "name": "Ory",
+    "url": "https://ory.com"
+  },
+  "homepage": "https://www.npmjs.com/package/@ory/claude-code"
+}

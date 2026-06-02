@@ -1,0 +1,12 @@
+{
+  "description": "Ory Claude Code MCP Server",
+  "mcpServers": {
+    "ory-claude-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@ory/mcp-server@0.3.0"
+      ]
+    }
+  }
+}
