@@ -16,28 +16,23 @@ You don't need an Ory account or any prior Ory experience to start.
 Inside Claude Code:
 
 ```
-/plugin install ory-agent-plugin
+/plugin marketplace add ory/claude-plugins
+/plugin install ory-agent-plugin@ory
 ```
 
-That's it — skills, slash commands, hooks, and the Ory MCP server are now registered.
+Skills, slash commands, hooks, and the Ory MCP server are now registered. Verify with `/plugin list`.
 
 <details>
-<summary>Alternative install paths</summary>
-
-If the public marketplace install above isn't available, either of these registers the same plugin:
-
-```
-# Ory-hosted marketplace
-/plugin marketplace add ory/claude-plugins
-/plugin install ory-agent-plugin@ory-plugins
-```
+<summary>Alternative install path (no Claude Code session required)</summary>
 
 ```bash
-# Direct installer, no prior npm install required
-npx @ory/claude-code install            # current project
-npx @ory/claude-code install --global   # all projects (user scope)
-npx @ory/claude-code uninstall
+# Direct installer — registers the marketplace and installs the plugin via the claude CLI.
+npx -y -p @ory/claude-code ory-claude install            # current project
+npx -y -p @ory/claude-code ory-claude install --global   # all projects (user scope)
+npx -y -p @ory/claude-code ory-claude uninstall
 ```
+
+The installer requires the `claude` CLI on `PATH`. After it finishes, run `ory-claude status` to confirm the plugin is registered.
 
 </details>
 
@@ -45,21 +40,15 @@ npx @ory/claude-code uninstall
 
 From any project where you'd like Ory authentication, inside Claude Code:
 
-1. **Start a local Ory instance.** Ask Claude *"start the local Ory stack"* or run:
+1. **Start a local Ory instance.** Ask Claude *"start the local Ory stack"* or run the slash command:
 
    ```
-   /ory:local-up
+   /ory-agent-plugin:local-up
    ```
 
    A banner prints the seeded test user's email and password. Note them — you'll log in with them in step 3.
 
-2. **Scaffold Ory into your project.** Ask Claude *"add Ory auth to this app"* or run:
-
-   ```
-   /ory:auth-setup
-   ```
-
-   Claude installs Ory Elements, wires the SDK, generates the login / registration / recovery / verification / settings pages, and sets up session middleware. It targets the local stack from step 1, so no signup or API key is needed.
+2. **Scaffold Ory into your project.** Ask Claude *"add Ory auth to this app"*. The `ory-auth-setup` skill takes over: it installs Ory Elements, wires the SDK, generates the login / registration / recovery / verification / settings pages, and sets up session middleware. It targets the local stack from step 1, so no signup or API key is needed.
 
 3. **Sign in.** Start your app, visit the login page Claude added, and sign in with the seeded credentials. You now have a real Ory session backed by a real Ory stack — locally, offline, with zero configuration.
 
@@ -69,12 +58,13 @@ That's the full Ory DX path. Stop here if you're just evaluating the plugin. Con
 
 ### Skills for scaffolding Ory into your application
 
-Each skill is a vetted, end-to-end playbook. Ask Claude in natural language or invoke the slash command directly:
+Each skill is a vetted, end-to-end playbook. Skills are model-invoked — ask Claude in natural language and the matching skill takes over.
 
-- **`/ory:auth-setup`** — full project setup. Install the Ory CLI, create an Ory Network project (or use the local one), add Ory Elements, configure the SDK, build the auth pages, wire session middleware.
-- **`/ory:login-flow`** — login, registration, recovery, verification, and settings pages with Ory Elements. Next.js App Router and React SPA variants.
-- **`/ory:social-login`** — Google, GitHub, Apple, Microsoft, Discord, and other OIDC providers with Jsonnet data mappers.
-- **`/ory:local-dev`** — drive the local Ory stack from within Claude to prototype and test without a remote project.
+- **`ory-auth-setup`** *(e.g. "set up Ory auth in this project")* — full project setup. Install the Ory CLI, create an Ory Network project (or use the local one), add Ory Elements, configure the SDK, build the auth pages, wire session middleware.
+- **`ory-login-flow`** *(e.g. "add login and registration pages with Ory Elements")* — login, registration, recovery, verification, and settings pages with Ory Elements. Next.js App Router and React SPA variants.
+- **`ory-social-login`** *(e.g. "add Google sign-in via Ory")* — Google, GitHub, Apple, Microsoft, Discord, and other OIDC providers with Jsonnet data mappers.
+- **`ory-local-dev`** *(e.g. "run the local Ory stack")* — drive the local Ory stack from within Claude to prototype and test without a remote project.
+- **`ory-permissions-onboarding`** *(e.g. "grant me use on the Bash tool")* — walk through writing the Ory Permissions tuples that let the plugin enforce per-tool access.
 
 ### Ory MCP server
 
@@ -83,8 +73,8 @@ Bundled and registered automatically. Exposes the Ory CLI and the Ory Network RE
 ### Local Ory stack
 
 ```
-/ory:local-up      # start a local Ory instance in Docker
-/ory:local-down    # tear it all down
+/ory-agent-plugin:local-up      # start a local Ory instance in Docker
+/ory-agent-plugin:local-down    # tear it all down
 ```
 
 `local-up` brings up Ory Identities, OAuth2, and Permissions, plus a login UI on `:3000` and Jaeger on `:16686`, all reachable through `http://localhost:4000`. A test user identity is seeded and the credentials are printed for you. Use it to:
@@ -174,9 +164,10 @@ Highlights:
 
 ## Troubleshooting
 
-- **`/ory:local-up` fails.** Make sure Docker is running and ports `3000`, `4000`, `4100`, and `16686` are free.
+- **`/ory-agent-plugin:local-up` fails.** Make sure Docker is running and ports `3000`, `4000`, `4100`, and `16686` are free.
 - **PKCE login loops.** Clear persisted state with `npx -y -p @ory/claude-code ory-claude agent unregister` and retry.
 - **`npx` fetches an old version.** Force a fresh fetch: `npx -y -p @ory/claude-code@latest ory-claude …`.
+- **Hooks pinned to an old plugin version.** After a plugin upgrade, run `/plugin marketplace update ory` inside Claude Code (or re-run the npx installer) so the hook commands and MCP server pick up the new release.
 - **Need more signal.** Set `ORY_AGENT_DEBUG=true` and `ORY_AGENT_LOG_FILE=/tmp/ory.log` to capture structured logs.
 
 ## Links
