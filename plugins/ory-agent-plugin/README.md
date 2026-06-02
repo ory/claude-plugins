@@ -36,11 +36,11 @@ The installer requires the `claude` CLI on `PATH`. After it finishes, run `ory-c
 
 </details>
 
-## Quickstart (≈ 3 minutes)
+## Quickstart
 
 From any project where you'd like Ory authentication, inside Claude Code:
 
-1. **Start a local Ory instance.** Ask Claude *"start the local Ory stack"* or run the slash command:
+1. **Start a local Ory instance.** *(~1 min. Requires Docker running.)* Ask Claude *"start the local Ory stack"* or run the slash command:
 
    ```
    /ory-agent-plugin:local-up
@@ -48,9 +48,17 @@ From any project where you'd like Ory authentication, inside Claude Code:
 
    A banner prints the seeded test user's email and password. Note them — you'll log in with them in step 3.
 
-2. **Scaffold Ory into your project.** Ask Claude *"add Ory auth to this app"*. The `ory-auth-setup` skill takes over: it installs Ory Elements, wires the SDK, generates the login / registration / recovery / verification / settings pages, and sets up session middleware. It targets the local stack from step 1, so no signup or API key is needed.
+2. **Scaffold Ory into your project.** *(~5–10 min, depending on your project.)* Ask Claude *"add Ory auth to this app"*. The `ory-auth-setup` skill takes over: it installs Ory Elements, wires the SDK, generates the login / registration / recovery / verification / settings pages, and sets up session middleware. It targets the local stack from step 1, so no signup or API key is needed.
 
 3. **Sign in.** Start your app, visit the login page Claude added, and sign in with the seeded credentials. You now have a real Ory session backed by a real Ory stack — locally, offline, with zero configuration.
+
+4. **Turn on Ory login for the Claude session itself.** *(Optional but recommended.)* Out of the box the plugin only governs your *app*. To also attach an Ory identity to *Claude's* session — so every tool call is attributed to you, not a fallback `session:<id>` subject — set:
+
+   ```bash
+   export ORY_AUTH_GATE=1
+   ```
+
+   Then restart Claude. On next session start, Claude opens an Ory login in your browser; sign in with the same seeded credentials from step 1. This is what makes `permissions enforce` (see [Agent security](#agent-security)) deny on the right identity later.
 
 That's the full Ory DX path. Stop here if you're just evaluating the plugin. Continue to [Agent security](#agent-security) when you're ready to enforce.
 
@@ -64,11 +72,11 @@ Each skill is a vetted, end-to-end playbook. Skills are model-invoked — ask Cl
 - **`ory-login-flow`** *(e.g. "add login and registration pages with Ory Elements")* — login, registration, recovery, verification, and settings pages with Ory Elements. Next.js App Router and React SPA variants.
 - **`ory-social-login`** *(e.g. "add Google sign-in via Ory")* — Google, GitHub, Apple, Microsoft, Discord, and other OIDC providers with Jsonnet data mappers.
 - **`ory-local-dev`** *(e.g. "run the local Ory stack")* — drive the local Ory stack from within Claude to prototype and test without a remote project.
-- **`ory-permissions-onboarding`** *(e.g. "grant me use on the Bash tool")* — walk through writing the Ory Permissions tuples that let the plugin enforce per-tool access.
+- **`ory-permissions-onboarding`** *(e.g. "grant me use on the Bash tool")* — walk through writing the Ory Permissions that let the plugin enforce per-tool access.
 
 ### Ory MCP server
 
-Bundled and registered automatically. Exposes the Ory CLI and the Ory Network REST API as MCP tools so Claude can manage identities, OAuth2 clients, projects, permission tuples, and configuration without ever leaving the chat. Useful for seeding test data, verifying a scaffolded integration, or running one-off admin tasks.
+Bundled and registered automatically. Exposes the Ory CLI and the Ory Network REST API as MCP tools so Claude can manage identities, OAuth2 clients, projects, permissions, and configuration without ever leaving the chat. Useful for seeding test data, verifying a scaffolded integration, or running one-off admin tasks.
 
 ### Local Ory stack
 
@@ -80,37 +88,38 @@ Bundled and registered automatically. Exposes the Ory CLI and the Ory Network RE
 `local-up` brings up Ory Identities, OAuth2, and Permissions, plus a login UI on `:3000` and Jaeger on `:16686`, all reachable through `http://localhost:4000`. A test user identity is seeded and the credentials are printed for you. Use it to:
 
 - **Learn Ory hands-on** without signing up for a hosted project.
-- **Prototype** flows (login, social, MFA, recovery, permission tuples) against a real Ory backend.
+- **Prototype** flows (login, social, MFA, recovery, permissions) against a real Ory backend.
 - **Test** an auth integration end-to-end before pushing anything to a real environment.
 - **Develop** your application against the same identity, OAuth2, and permission surfaces you'll ship with.
 
 ## Pointing at a real Ory project
 
-The Quickstart uses the local stack. If you have a hosted [Ory Network](https://console.ory.sh) project, point the plugin at it:
+The Quickstart uses the local stack. If you have a hosted [Ory Network](https://console.ory.sh) project, point the plugin at it. A project URL is enough — the agent identity is created automatically via OAuth2 Dynamic Client Registration on first run:
 
 ```bash
 npx -y -p @ory/claude-code ory-claude configure \
-  --project-url https://<id>.projects.oryapis.com \
-  --api-key ory_pat_...
+  --project-url https://<id>.projects.oryapis.com
 ```
 
-Config is saved to `~/.config/ory-agent-plugins/config.json` and shared across every Ory agent plugin on the machine.
+Pass `--api-key ory_pat_...` only if you want to override the auto-registered agent identity with a static personal access token (operator override; rarely needed).
 
-Without configuration the plugin still loads cleanly and runs in **pass-through mode**: skills and commands work, but nothing is blocked. You can stay in pass-through mode indefinitely if you only want the DX features.
+Config is saved to `~/.config/ory-agent-plugins/config.json` and shared across every Ory agent plugin on the machine. The same settings can be supplied via environment variables (`ORY_PROJECT_URL`, `ORY_AGENT_API_KEY`) — env vars take precedence over the config file when both are set, which is what most CI / scripted setups want.
+
+Without any configuration the plugin still loads cleanly and runs in **pass-through mode**: skills, slash commands, and audit logging work, but no permission checks run, so nothing is ever blocked. You can stay in pass-through mode indefinitely if you only want the DX features.
 
 ## Agent security
 
 Once the plugin is pointed at an Ory project (local or hosted), Claude's session and every tool call can be governed by Ory.
 
 - **Authentication.** Two identities. The human at the keyboard (the **user**) authenticates interactively via Ory Identities when `ORY_AUTH_GATE=1` is set. The Claude process (the **agent**) gets its own OAuth2 identity, self-registered via [Dynamic Client Registration (RFC 7591)](https://datatracker.ietf.org/doc/html/rfc7591) on first run. Sub-agents launched by the `Task` tool each receive their own typed identity.
-- **Authorization.** Before any tool runs, the plugin checks [Ory Permissions](https://www.ory.sh/docs/keto) (Zanzibar-style relation tuples) against the user's subject and blocks the call on `deny`. MCP tool calls additionally get a server-level check.
-- **Audit.** Every decision (allow, deny, fallback) is recorded as a structured trace span: NDJSON file output and/or OTLP/HTTP export to Jaeger, Honeycomb, Grafana, and similar collectors. The user → agent (and agent → subagent) delegation chain is written to Ory as relation tuples so *"agent X acting on behalf of user Y"* stays queryable after tokens expire.
+- **Authorization.** Before any tool runs, the plugin checks [Ory Permissions](https://www.ory.sh/docs/keto) (Zanzibar-style relations) against the user's subject and blocks the call on `deny`. MCP tool calls additionally get a server-level check.
+- **Audit.** Every decision (allow, deny, fallback) is recorded as a structured trace span: NDJSON file output and/or OTLP/HTTP export to Jaeger, Honeycomb, Grafana, and similar collectors. The user → agent (and agent → subagent) delegation chain is written to Ory as relations so *"agent X acting on behalf of user Y"* stays queryable after tokens expire.
 
-The plugin is **fail-open** on its own infrastructure failures (network errors, rate limits, missing config), so enforcement is only as strong as your tuples — grant explicit `invoke` relations for the tools each user should be able to run.
+The plugin is **fail-open** on its own infrastructure failures (network errors, rate limits, missing config), so enforcement is only as strong as your permission grants — grant explicit `use` on the tools each user should be able to run.
 
 ### Enable enforcement
 
-After install the plugin runs in **observe mode**: every tool call is checked against Ory Permissions, but a deny is recorded as a `permission.observe_deny` audit span and the tool runs anyway. This lets you see what *would* be blocked before turning on hard blocking.
+With an Ory project configured, the plugin runs in **observe mode** by default: every tool call is checked against Ory Permissions, a deny is recorded as a `permission.observe_deny` audit span, and the tool runs anyway. This lets you see what *would* be blocked before turning on hard blocking. (Without a project configured, the plugin is in pass-through mode — no checks run at all.)
 
 1. **Turn on the user gate.** In your shell:
 
@@ -120,7 +129,7 @@ After install the plugin runs in **observe mode**: every tool call is checked ag
 
    The next Claude session opens a browser for PKCE login. Subsequent sessions reuse the persisted token until it expires.
 
-2. **Bootstrap tuples for the built-in tools.** One idempotent command grants the current user `use` on every tool Claude ships with (Read, Write, Bash, …):
+2. **Bootstrap permissions for the built-in tools.** One idempotent command grants the current user `use` on every tool Claude ships with (Read, Write, Bash, …):
 
    ```bash
    npx -y -p @ory/claude-code ory-claude permissions bootstrap
@@ -134,7 +143,7 @@ After install the plugin runs in **observe mode**: every tool call is checked ag
    npx -y -p @ory/claude-code ory-claude permissions status
    ```
 
-   Add tuples for any MCP server tools or custom commands by hand, or via the Ory MCP server from inside Claude (*"grant me use on the Bash tool"*).
+   Add permissions for any MCP server tools or custom commands by hand, or via the Ory MCP server from inside Claude (*"grant me use on the Bash tool"*).
 
 4. **Promote to enforce.** Once the observe-mode logs look right, switch over:
 
@@ -158,7 +167,7 @@ npx -y -p @ory/claude-code ory-claude status
 Highlights:
 
 - `agent status` — show the current persisted DCR identity for the agent.
-- `permissions observe` / `permissions enforce` — switch between "log denies, allow through" (the install default) and "block denies." `permissions bootstrap` writes `use` tuples for the harness's built-in tools so the promotion path doesn't require hand-writing relationships.
+- `permissions observe` / `permissions enforce` — switch between "log denies, allow through" (the install default) and "block denies." `permissions bootstrap` writes `use` permissions for the harness's built-in tools so the promotion path doesn't require hand-writing relations.
 - `configure --audit-only` — kill switch that disables Ory entirely (no auth, no permission checks; only audit logging of tool invocations). For phased rollouts, prefer `permissions observe` over `--audit-only`.
 - `local seed` / `local env` — reseed the test user, or print env vars for pointing other tools at the local stack.
 
