@@ -1,0 +1,191 @@
+# Ory Agent Plugin: Claude Code
+
+[Ory](https://ory.com) bundled into [Claude Code](https://docs.anthropic.com/en/docs/claude-code): skills and slash commands that scaffold Ory authentication into your codebase, a local Ory stack you can spin up in one command, and (when pointed at an Ory project) authentication, authorization, and audit for every tool Claude runs.
+
+You don't need an Ory account or any prior Ory experience to start.
+
+## Prerequisites
+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and signed in
+- Node.js **≥ 24**
+- [Docker](https://docs.docker.com/get-docker/) (only needed for the local Ory stack)
+- macOS or Linux. Windows works via WSL2.
+
+## Install
+
+Inside Claude Code:
+
+```
+/plugin install ory-agent-plugin
+```
+
+That's it — skills, slash commands, hooks, and the Ory MCP server are now registered.
+
+<details>
+<summary>Alternative install paths</summary>
+
+If the public marketplace install above isn't available, either of these registers the same plugin:
+
+```
+# Ory-hosted marketplace
+/plugin marketplace add ory/claude-plugins
+/plugin install ory-agent-plugin@ory-plugins
+```
+
+```bash
+# Direct installer, no prior npm install required
+npx @ory/claude-code install            # current project
+npx @ory/claude-code install --global   # all projects (user scope)
+npx @ory/claude-code uninstall
+```
+
+</details>
+
+## Quickstart (≈ 3 minutes)
+
+From any project where you'd like Ory authentication, inside Claude Code:
+
+1. **Start a local Ory instance.** Ask Claude *"start the local Ory stack"* or run:
+
+   ```
+   /ory:local-up
+   ```
+
+   A banner prints the seeded test user's email and password. Note them — you'll log in with them in step 3.
+
+2. **Scaffold Ory into your project.** Ask Claude *"add Ory auth to this app"* or run:
+
+   ```
+   /ory:auth-setup
+   ```
+
+   Claude installs Ory Elements, wires the SDK, generates the login / registration / recovery / verification / settings pages, and sets up session middleware. It targets the local stack from step 1, so no signup or API key is needed.
+
+3. **Sign in.** Start your app, visit the login page Claude added, and sign in with the seeded credentials. You now have a real Ory session backed by a real Ory stack — locally, offline, with zero configuration.
+
+That's the full Ory DX path. Stop here if you're just evaluating the plugin. Continue to [Agent security](#agent-security) when you're ready to enforce.
+
+## What's included
+
+### Skills for scaffolding Ory into your application
+
+Each skill is a vetted, end-to-end playbook. Ask Claude in natural language or invoke the slash command directly:
+
+- **`/ory:auth-setup`** — full project setup. Install the Ory CLI, create an Ory Network project (or use the local one), add Ory Elements, configure the SDK, build the auth pages, wire session middleware.
+- **`/ory:login-flow`** — login, registration, recovery, verification, and settings pages with Ory Elements. Next.js App Router and React SPA variants.
+- **`/ory:social-login`** — Google, GitHub, Apple, Microsoft, Discord, and other OIDC providers with Jsonnet data mappers.
+- **`/ory:local-dev`** — drive the local Ory stack from within Claude to prototype and test without a remote project.
+
+### Ory MCP server
+
+Bundled and registered automatically. Exposes the Ory CLI and the Ory Network REST API as MCP tools so Claude can manage identities, OAuth2 clients, projects, permission tuples, and configuration without ever leaving the chat. Useful for seeding test data, verifying a scaffolded integration, or running one-off admin tasks.
+
+### Local Ory stack
+
+```
+/ory:local-up      # start a local Ory instance in Docker
+/ory:local-down    # tear it all down
+```
+
+`local-up` brings up Ory Identities, OAuth2, and Permissions, plus a login UI on `:3000` and Jaeger on `:16686`, all reachable through `http://localhost:4000`. A test user identity is seeded and the credentials are printed for you. Use it to:
+
+- **Learn Ory hands-on** without signing up for a hosted project.
+- **Prototype** flows (login, social, MFA, recovery, permission tuples) against a real Ory backend.
+- **Test** an auth integration end-to-end before pushing anything to a real environment.
+- **Develop** your application against the same identity, OAuth2, and permission surfaces you'll ship with.
+
+## Pointing at a real Ory project
+
+The Quickstart uses the local stack. If you have a hosted [Ory Network](https://console.ory.sh) project, point the plugin at it:
+
+```bash
+npx -y -p @ory/claude-code ory-claude configure \
+  --project-url https://<id>.projects.oryapis.com \
+  --api-key ory_pat_...
+```
+
+Config is saved to `~/.config/ory-agent-plugins/config.json` and shared across every Ory agent plugin on the machine.
+
+Without configuration the plugin still loads cleanly and runs in **pass-through mode**: skills and commands work, but nothing is blocked. You can stay in pass-through mode indefinitely if you only want the DX features.
+
+## Agent security
+
+Once the plugin is pointed at an Ory project (local or hosted), Claude's session and every tool call can be governed by Ory.
+
+- **Authentication.** Two identities. The human at the keyboard (the **user**) authenticates interactively via Ory Identities when `ORY_AUTH_GATE=1` is set. The Claude process (the **agent**) gets its own OAuth2 identity, self-registered via [Dynamic Client Registration (RFC 7591)](https://datatracker.ietf.org/doc/html/rfc7591) on first run. Sub-agents launched by the `Task` tool each receive their own typed identity.
+- **Authorization.** Before any tool runs, the plugin checks [Ory Permissions](https://www.ory.sh/docs/keto) (Zanzibar-style relation tuples) against the user's subject and blocks the call on `deny`. MCP tool calls additionally get a server-level check.
+- **Audit.** Every decision (allow, deny, fallback) is recorded as a structured trace span: NDJSON file output and/or OTLP/HTTP export to Jaeger, Honeycomb, Grafana, and similar collectors. The user → agent (and agent → subagent) delegation chain is written to Ory as relation tuples so *"agent X acting on behalf of user Y"* stays queryable after tokens expire.
+
+The plugin is **fail-open** on its own infrastructure failures (network errors, rate limits, missing config), so enforcement is only as strong as your tuples — grant explicit `invoke` relations for the tools each user should be able to run.
+
+### Enable enforcement
+
+After install the plugin runs in **observe mode**: every tool call is checked against Ory Permissions, but a deny is recorded as a `permission.observe_deny` audit span and the tool runs anyway. This lets you see what *would* be blocked before turning on hard blocking.
+
+1. **Turn on the user gate.** In your shell:
+
+   ```bash
+   export ORY_AUTH_GATE=1
+   ```
+
+   The next Claude session opens a browser for PKCE login. Subsequent sessions reuse the persisted token until it expires.
+
+2. **Bootstrap tuples for the built-in tools.** One idempotent command grants the current user `use` on every tool Claude ships with (Read, Write, Bash, …):
+
+   ```bash
+   npx -y -p @ory/claude-code ory-claude permissions bootstrap
+   ```
+
+   If a user identity is already cached at install time, the installer runs this for you automatically — re-run after adding tools, switching subjects, or changing the namespace.
+
+3. **Check coverage.** `permissions status` probes every tool in the harness's catalog and prints allowed / denied per tool:
+
+   ```bash
+   npx -y -p @ory/claude-code ory-claude permissions status
+   ```
+
+   Add tuples for any MCP server tools or custom commands by hand, or via the Ory MCP server from inside Claude (*"grant me use on the Bash tool"*).
+
+4. **Promote to enforce.** Once the observe-mode logs look right, switch over:
+
+   ```bash
+   npx -y -p @ory/claude-code ory-claude permissions enforce
+   ```
+
+   Denies now block the tool call; Claude shows the denial reason and the decision is recorded as a `tool.block` trace span with `blocked: true`. Switch back any time with `permissions observe`.
+
+## CLI reference
+
+```
+npx -y -p @ory/claude-code ory-claude install | uninstall              [--global]
+npx -y -p @ory/claude-code ory-claude configure                         [--project-url <url>] [--api-key <key>] [--audit-only]
+npx -y -p @ory/claude-code ory-claude agent <status|unregister>         Manage the agent's OAuth2 identity
+npx -y -p @ory/claude-code ory-claude permissions <status|bootstrap|observe|enforce>
+npx -y -p @ory/claude-code ory-claude local <up|down|status|seed|logs|env|configure|reset>
+npx -y -p @ory/claude-code ory-claude status
+```
+
+Highlights:
+
+- `agent status` — show the current persisted DCR identity for the agent.
+- `permissions observe` / `permissions enforce` — switch between "log denies, allow through" (the install default) and "block denies." `permissions bootstrap` writes `use` tuples for the harness's built-in tools so the promotion path doesn't require hand-writing relationships.
+- `configure --audit-only` — kill switch that disables Ory entirely (no auth, no permission checks; only audit logging of tool invocations). For phased rollouts, prefer `permissions observe` over `--audit-only`.
+- `local seed` / `local env` — reseed the test user, or print env vars for pointing other tools at the local stack.
+
+## Troubleshooting
+
+- **`/ory:local-up` fails.** Make sure Docker is running and ports `3000`, `4000`, `4100`, and `16686` are free.
+- **PKCE login loops.** Clear persisted state with `npx -y -p @ory/claude-code ory-claude agent unregister` and retry.
+- **`npx` fetches an old version.** Force a fresh fetch: `npx -y -p @ory/claude-code@latest ory-claude …`.
+- **Need more signal.** Set `ORY_AGENT_DEBUG=true` and `ORY_AGENT_LOG_FILE=/tmp/ory.log` to capture structured logs.
+
+## Links
+
+- [Ory documentation](https://www.ory.com/docs/)
+- [Ory Network console](https://console.ory.sh)
+- [Ory Elements](https://github.com/ory/elements)
+- [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code)
+
+## License
+
+Apache-2.0
