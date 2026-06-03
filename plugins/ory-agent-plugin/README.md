@@ -73,6 +73,9 @@ Each skill is a vetted, end-to-end playbook. Skills are model-invoked — ask Cl
 - **`ory-social-login`** *(e.g. "add Google sign-in via Ory")* — Google, GitHub, Apple, Microsoft, Discord, and other OIDC providers with Jsonnet data mappers.
 - **`ory-local-dev`** *(e.g. "run the local Ory stack")* — drive the local Ory stack from within Claude to prototype and test without a remote project.
 - **`ory-permissions-onboarding`** *(e.g. "grant me use on the Bash tool")* — walk through writing the Ory Permissions that let the plugin enforce per-tool access.
+- **`ory-build-integration`** *(e.g. "wire an Ory webhook into my app")* — pull the runnable subset of an `ory/integrates` template (webhook / config / http-event) into the user's own app and wire it to their Ory project — no contribution/registry concerns.
+- **`ory-contribute-integration`** *(e.g. "contribute a new Ory integration")* — author a brand-new integration as a contribution to `ory/integrates`, including `registry.entry.yaml`, the `Maintained by:` footer, DCO sign-off, and registry regeneration.
+- **`ory-e2b-sandbox`** *(e.g. "create my e2b sandbox with ory agent security")* — scaffold an [E2B](https://e2b.dev) sandbox template that boots with this plugin preinstalled and registered, so every sandbox session is gated by Ory auth, permissions, and tracing without any per-sandbox setup.
 
 ### Ory MCP server
 
