@@ -1,6 +1,6 @@
 {
   "name": "ory-agent-plugin",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Ory plugin for Claude Code: scaffolding skills, a local Ory instance, and authentication, authorization, and audit for every tool call",
   "author": {
     "name": "Ory",
