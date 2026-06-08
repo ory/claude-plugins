@@ -7,7 +7,7 @@ You don't need an Ory account or any prior Ory experience to start.
 ## Prerequisites
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and signed in
-- Node.js **≥ 24**
+- Node.js **≥ 22**
 - [Docker](https://docs.docker.com/get-docker/) (only needed for the local Ory stack)
 - macOS or Linux. Windows works via WSL2.
 

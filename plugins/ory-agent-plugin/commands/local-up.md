@@ -23,5 +23,5 @@ After it completes, set the printed environment variables in your shell:
 eval "$(npx -y -p @ory/claude-code ory-claude local env)"
 ```
 
-If services are already running, stop them first with `/ory:local-down`
+If services are already running, stop them first with `/ory-agent-plugin:local-down`
 or use `npx -y -p @ory/claude-code ory-claude local status` to check the current state.

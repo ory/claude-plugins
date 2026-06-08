@@ -1,6 +1,6 @@
 ---
 name: ory-local-dev
-description: Run a local Ory stack (Kratos identity, Keto permissions, Hydra OAuth2, gateway on :4000) for building and testing an authentication application without an Ory Network project. Use whenever the user wants to develop, prototype, or test login/registration/recovery/permission flows locally — phrases like "run Ory locally", "no Ory project yet", "offline auth dev", "test my login flow", "spin up Kratos/Keto/Hydra", or "I just want to try this on my machine". Drives the `/ory:local-up` and `/ory:local-down` commands.
+description: Run a local Ory stack (Kratos identity, Keto permissions, Hydra OAuth2, gateway on :4000) for building and testing an authentication application without an Ory Network project. Use whenever the user wants to develop, prototype, or test login/registration/recovery/permission flows locally — phrases like "run Ory locally", "no Ory project yet", "offline auth dev", "test my login flow", "spin up Kratos/Keto/Hydra", or "I just want to try this on my machine". Drives the `/ory-agent-plugin:local-up` and `/ory-agent-plugin:local-down` commands.
 ---
 
 # Build an Auth App Against a Local Ory Stack
@@ -10,9 +10,9 @@ You are helping the user develop an authentication application against a
 `@ory/claude-code` plugin ships two commands that
 manage the lifecycle:
 
-- `/ory:local-up` — start Kratos, Keto, Hydra, and an Nginx gateway,
+- `/ory-agent-plugin:local-up` — start Kratos, Keto, Hydra, and an Nginx gateway,
   then seed a test identity, session, and permission tuples.
-- `/ory:local-down` — stop all services while preserving data volumes.
+- `/ory-agent-plugin:local-down` — stop all services while preserving data volumes.
 
 Both delegate to `npx -y -p @ory/claude-code ory-claude local <subcommand>`, so the same
 workflow runs from the shell when the command shortcuts are not available.
@@ -31,9 +31,9 @@ If the user already has an Ory Network project and just wants their
 production app wired up, prefer the `/project:ory-auth-setup` skill and
 point the SDK at the Network URL instead.
 
-## What `/ory:local-up` gives you
+## What `/ory-agent-plugin:local-up` gives you
 
-After `/ory:local-up` completes:
+After `/ory-agent-plugin:local-up` completes:
 
 | Service       | URL                              | Purpose                              |
 |---------------|----------------------------------|--------------------------------------|
@@ -48,14 +48,14 @@ After `/ory:local-up` completes:
 The seed step also produces:
 
 - Test identity: `agent@ory-local.dev`
-- A live session token (printed at the end of `/ory:local-up`)
+- A live session token (printed at the end of `/ory-agent-plugin:local-up`)
 - Permission tuples in the `AgentTools` namespace for common tool names
 - An OAuth2 client (`ory-agent-plugins-local`, `client_credentials` grant)
 
 ## Step 1: Verify Docker is running
 
 The local stack is Docker Compose under the hood. Before invoking
-`/ory:local-up`, confirm Docker is available:
+`/ory-agent-plugin:local-up`, confirm Docker is available:
 
 ```bash
 docker info
@@ -66,7 +66,7 @@ docker engine) and retry. Do not try to install Docker for them.
 
 ## Step 2: Start the stack
 
-Tell the user to run `/ory:local-up`, or the equivalent shell command:
+Tell the user to run `/ory-agent-plugin:local-up`, or the equivalent shell command:
 
 ```bash
 npx -y -p @ory/claude-code ory-claude local up
@@ -160,9 +160,9 @@ have looked at logs.
 
 ## Step 7: Stop or reset
 
-When the user is done for the session, use `/ory:local-down` (equivalent:
+When the user is done for the session, use `/ory-agent-plugin:local-down` (equivalent:
 `npx -y -p @ory/claude-code ory-claude local down`). Containers stop but volumes
-remain, so the next `/ory:local-up` reuses the same identities,
+remain, so the next `/ory-agent-plugin:local-up` reuses the same identities,
 sessions, and tuples.
 
 For a full wipe (e.g., after schema changes or to clear test data):
@@ -178,7 +178,7 @@ plugin updates the bundled service configs.
 ## Troubleshooting
 
 - **"Docker is not running"** — start Docker Desktop, then re-run
-  `/ory:local-up`.
+  `/ory-agent-plugin:local-up`.
 - **Gateway never becomes healthy** — `npx -y -p @ory/claude-code ory-claude local logs
   gateway` and `npx -y -p @ory/claude-code ory-claude local logs kratos` to see which service
   failed. Port conflicts on `4000`, `4433`, `4444`, or `4466` are the

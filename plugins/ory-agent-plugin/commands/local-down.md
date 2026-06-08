@@ -10,7 +10,7 @@ Run:
 npx -y -p @ory/claude-code ory-claude local down
 ```
 
-To restart later, use `/ory:local-up`.
+To restart later, use `/ory-agent-plugin:local-up`.
 
 To stop **and** remove all data (full reset), run:
 

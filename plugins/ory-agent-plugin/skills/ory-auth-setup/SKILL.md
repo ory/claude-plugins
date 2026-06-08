@@ -41,7 +41,7 @@ Before installing the Ory CLI, decide where the auth backend will run:
 - **Local Ory stack** (no Network project required, ideal for
   prototyping, offline work, or automated tests) — switch to the
   `/project:ory-local-dev` skill. It manages a Dockerized
-  Kratos/Keto/Hydra stack via `/ory:local-up` and `/ory:local-down`,
+  Kratos/Keto/Hydra stack via `/ory-agent-plugin:local-up` and `/ory-agent-plugin:local-down`,
   and the rest of this skill applies once the SDK URL points at the
   local gateway (`http://localhost:4000`).
 
