@@ -20,19 +20,24 @@ Inside Claude Code:
 /plugin install ory-agent-plugin@ory
 ```
 
-Skills, slash commands, hooks, and the Ory MCP server are now registered. Verify with `/plugin list`.
+Then confirm everything landed:
+
+```bash
+npx -y -p @ory/claude-code ory-claude status
+```
+
+`status` is the single source of truth — it prints configuration, user and agent identity, per-tool permission coverage, hook + skill registration, and a tail of recent debug logs. Unconfigured fields show inline as `(unset)`.
 
 <details>
 <summary>Alternative install path (no Claude Code session required)</summary>
 
 ```bash
-# Direct installer — registers the marketplace and installs the plugin via the claude CLI.
 npx -y -p @ory/claude-code ory-claude install            # current project
 npx -y -p @ory/claude-code ory-claude install --global   # all projects (user scope)
 npx -y -p @ory/claude-code ory-claude uninstall
 ```
 
-The installer requires the `claude` CLI on `PATH`. After it finishes, run `ory-claude status` to confirm the plugin is registered.
+The installer requires the `claude` CLI on `PATH`.
 
 </details>
 
