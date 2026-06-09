@@ -5,7 +5,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@ory/mcp-server@0.7.0"
+        "@ory/mcp-server@0.7.1"
       ]
     }
   }
