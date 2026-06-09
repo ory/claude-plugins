@@ -81,6 +81,8 @@ Each skill is a vetted, end-to-end playbook. Skills are model-invoked — ask Cl
 - **`ory-build-integration`** *(e.g. "wire an Ory webhook into my app")* — pull the runnable subset of an `ory/integrates` template (webhook / config / http-event) into the user's own app and wire it to their Ory project — no contribution/registry concerns.
 - **`ory-contribute-integration`** *(e.g. "contribute a new Ory integration")* — author a brand-new integration as a contribution to `ory/integrates`, including `registry.entry.yaml`, the `Maintained by:` footer, DCO sign-off, and registry regeneration.
 - **`ory-e2b-sandbox`** *(e.g. "create my e2b sandbox with ory agent security")* — scaffold an [E2B](https://e2b.dev) sandbox template that boots with this plugin preinstalled and registered, so every sandbox session is gated by Ory auth, permissions, and tracing without any per-sandbox setup.
+- **`ory-build-agent`** *(e.g. "wire Ory into my own agent")* — drop `@ory/argus` directly into a custom agent you own (Claude Agent SDK, OpenAI Agents SDK, Mastra, Vercel AI SDK, PydanticAI, LangGraph, Mistral AI, or Salesforce Agentforce) so the user is authenticated, every tool call is authorized against Ory Permissions, and the lifecycle emits trace spans.
+- **`ory-temporal-worker`** *(e.g. "wire Ory into my Temporal worker")* — scaffold a [Temporal](https://temporal.io) TypeScript worker per the [official local-dev guide](https://docs.temporal.io/develop/typescript/set-up-your-local-typescript), with every Activity gated by an Ory permission check, the worker's agent identity resolved via DCR, and the full lifecycle emitting trace spans.
 
 ### Ory MCP server
 
@@ -91,6 +93,7 @@ Bundled and registered automatically. Exposes the Ory CLI and the Ory Network RE
 ```
 /ory-agent-plugin:local-up      # start a local Ory instance in Docker
 /ory-agent-plugin:local-down    # tear it all down
+/ory-agent-plugin:temporal-up   # start a local Temporal dev server (for ory-temporal-worker)
 ```
 
 `local-up` brings up Ory Identities, OAuth2, and Permissions, plus a login UI on `:3000` and Jaeger on `:16686`, all reachable through `http://localhost:4000`. A test user identity is seeded and the credentials are printed for you. Use it to:
