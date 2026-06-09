@@ -66,7 +66,7 @@ export const template = Template()
   // Sandbox runtime defaults. Per-tenant secrets (project URL, tokens, client
   // IDs) MUST be passed at Sandbox.create() time, never baked into the image.
   .setEnvs({
-    ORY_AUTH_GATE: "1",
+    ORY_USER_LOGIN: "1",
     ORY_PERMISSION_MODE: "observe",
     ORY_PERMISSION_NAMESPACE: "AgentTools",
     ORY_AGENT_DEBUG: "true",
@@ -198,7 +198,7 @@ await sbx.commands.run("ory-claude --version");  // sanity check
 ```
 
 Sandboxes are headless, so the user **must** pre-supply
-`ORY_USER_SESSION_TOKEN` or `ORY_USER_OAUTH2_TOKEN` — otherwise the auth gate's
+`ORY_USER_SESSION_TOKEN` or `ORY_USER_OAUTH2_TOKEN` — otherwise user login's
 PKCE browser flow has no target and hangs. See `/project:ory-auth-setup` for the full
 env-var matrix.
 

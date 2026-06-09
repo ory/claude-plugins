@@ -92,9 +92,9 @@ out-of-band as they come into scope.
 Two common failure modes:
 
 1. **No user identity cached.** Bootstrap needs to know which subject
-   to grant tuples to. If the auth gate has never run (no PKCE login,
+   to grant tuples to. If user login has never run (no PKCE login,
    no `ORY_USER_SUBJECT_ID`), the command refuses. Run the harness once
-   with `ORY_AUTH_GATE=1` to cache a user token, or set
+   with `ORY_USER_LOGIN=1` to cache a user token, or set
    `ORY_USER_SUBJECT_ID=<id>` to target a known subject.
 2. **Credentials lack write scope on the permission namespace.** The
    command prints the full tuple list so you can apply them manually
