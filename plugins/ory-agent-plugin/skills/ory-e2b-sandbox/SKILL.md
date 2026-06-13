@@ -66,7 +66,7 @@ export const template = Template()
   // Sandbox runtime defaults. Per-tenant secrets (project URL, tokens, client
   // IDs) MUST be passed at Sandbox.create() time, never baked into the image.
   .setEnvs({
-    ORY_USER_LOGIN: "1",
+    ORY_USER_LOGIN: "true",
     ORY_PERMISSION_MODE: "observe",
     ORY_PERMISSION_NAMESPACE: "AgentTools",
     ORY_AGENT_DEBUG: "true",

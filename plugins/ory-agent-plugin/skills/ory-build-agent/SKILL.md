@@ -86,7 +86,7 @@ import {
 const client = OryAgentClient.fromEnv("my-agent");
 const { projectUrl } = resolveConfig();
 
-// 1. User gate — interactive PKCE when ORY_USER_LOGIN=1, no-op otherwise.
+// 1. User gate — interactive PKCE when ORY_USER_LOGIN=true, no-op otherwise.
 const userDecision = await ensureUserAuthenticated(client, {
   binName: "my-agent",
   harness: "my-agent",
@@ -409,7 +409,7 @@ PKCE flow, permission tuples, and trace spans are all visible:
 1. `/ory-agent-plugin:local-up` — brings up Kratos / Keto / Hydra on `localhost:4000`
    and seeds a demo user. The banner prints the email + password.
 2. Export the env vars the launcher writes (`ORY_PROJECT_URL`,
-   `ORY_USER_LOGIN=1`, `ORY_OAUTH2_CLIENT_ID`, optional
+   `ORY_USER_LOGIN=true`, `ORY_OAUTH2_CLIENT_ID`, optional
    `ORY_AGENT_TRACE_FILE` for an NDJSON span log).
 3. Start your agent. Confirm the browser opens for PKCE login.
 4. Invoke a gated tool and `tail -f $ORY_AGENT_TRACE_FILE | jq .` — you

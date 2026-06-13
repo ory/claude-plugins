@@ -41,8 +41,10 @@ What you want to see:
 If any of those are wrong, fix them before continuing:
 
 ```sh
-npx -y -p @ory/claude-code ory-claude configure --project-url <URL> --api-key <KEY>
+npx -y -p @ory/claude-code ory-claude configure --project-url <URL> --oauth2-client-id <CLIENT_ID> [--api-key <KEY>]
 ```
+
+`--oauth2-client-id` is the public OAuth2 client registered in your Ory project (required when `ORY_USER_LOGIN=true`; see the *Register the user OAuth2 client* section of the plugin README).
 
 ## Step 2: Look at the current permission posture
 
@@ -94,7 +96,7 @@ Two common failure modes:
 1. **No user identity cached.** Bootstrap needs to know which subject
    to grant tuples to. If user login has never run (no PKCE login,
    no `ORY_USER_SUBJECT_ID`), the command refuses. Run the harness once
-   with `ORY_USER_LOGIN=1` to cache a user token, or set
+   with `ORY_USER_LOGIN=true` to cache a user token, or set
    `ORY_USER_SUBJECT_ID=<id>` to target a known subject.
 2. **Credentials lack write scope on the permission namespace.** The
    command prints the full tuple list so you can apply them manually
