@@ -4,6 +4,20 @@
 
 You don't need an Ory account or any prior Ory experience to start.
 
+## New to Ory?
+
+[Ory](https://www.ory.com/docs/) is an open-source identity and access platform — it provides login, registration, sessions, social sign-in, multi-factor auth, and fine-grained permissions, so you don't have to build any of that yourself. Two things make it easy to try with no prior experience:
+
+- **Ory Elements** are prebuilt, themeable UI components for the auth pages (login, registration, recovery, settings). The scaffolding skills wire them into your app for you.
+- **The local Ory stack** is a complete Ory running on your laptop in Docker — no account, no signup, no API key. Everything in the Quickstart below works against it, fully offline.
+
+This plugin does two independent things, and you can use either on its own:
+
+1. **Build auth into your app.** Have Claude scaffold Ory login, registration, social sign-in, and permissions into the project you're working on, backed by the local stack. This is the Quickstart below — it needs nothing but Docker.
+2. **Govern the agent itself.** Authenticate Claude's own session and authorize every tool it runs against Ory Permissions, with a full audit trail. See [Agent security](#agent-security).
+
+If you're just exploring, do the Quickstart first.
+
 ## Prerequisites
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and signed in
@@ -72,12 +86,17 @@ That's the full Ory DX path. Stop here if you're just evaluating the plugin. Con
 
 ### Skills for scaffolding Ory into your application
 
-Each skill is a vetted, end-to-end playbook. Skills are model-invoked — ask Claude in natural language and the matching skill takes over.
+Each skill is a vetted, end-to-end playbook. Skills are model-invoked — ask Claude in natural language and the matching skill takes over. New to Ory? Start with the first group.
+
+**Start here — add Ory auth to your app:**
 
 - **`ory-auth-setup`** *(e.g. "set up Ory auth in this project")* — full project setup. Install the Ory CLI, create an Ory Network project (or use the local one), add Ory Elements, configure the SDK, build the auth pages, wire session middleware.
 - **`ory-login-flow`** *(e.g. "add login and registration pages with Ory Elements")* — login, registration, recovery, verification, and settings pages with Ory Elements. Next.js App Router and React SPA variants.
 - **`ory-social-login`** *(e.g. "add Google sign-in via Ory")* — Google, GitHub, Apple, Microsoft, Discord, and other OIDC providers with Jsonnet data mappers.
 - **`ory-local-dev`** *(e.g. "run the local Ory stack")* — drive the local Ory stack from within Claude to prototype and test without a remote project.
+
+**Going further:**
+
 - **`ory-permissions-onboarding`** *(e.g. "grant me use on the Bash tool")* — walk through writing the Ory Permissions that let the plugin enforce per-tool access.
 - **`ory-build-integration`** *(e.g. "wire an Ory webhook into my app")* — pull the runnable subset of an `ory/integrates` template (webhook / config / http-event) into the user's own app and wire it to their Ory project — no contribution/registry concerns.
 - **`ory-contribute-integration`** *(e.g. "contribute a new Ory integration")* — author a brand-new integration as a contribution to `ory/integrates`, including `registry.entry.yaml`, the `Maintained by:` footer, DCO sign-off, and registry regeneration.
@@ -97,7 +116,7 @@ Bundled and registered automatically. Exposes the Ory CLI and the Ory Network RE
 /ory-agent-plugin:temporal-up   # start a local Temporal dev server (for ory-temporal-worker)
 ```
 
-`local-up` brings up Ory Identities, OAuth2, and Permissions, plus a login UI on `:3000` and Jaeger on `:16686`, all reachable through `http://localhost:4000`. A test user identity is seeded and the credentials are printed for you. Use it to:
+`local-up` runs a complete Ory on your laptop: the Ory APIs (Identities, OAuth2, Permissions) at `http://localhost:4000`, a login UI on `:3000`, and Jaeger (the trace viewer) on `:16686`. A test user identity is seeded and its credentials are printed for you. Use it to:
 
 - **Learn Ory hands-on** without signing up for a hosted project.
 - **Prototype** flows (login, social, MFA, recovery, permissions) against a real Ory backend.
@@ -106,7 +125,7 @@ Bundled and registered automatically. Exposes the Ory CLI and the Ory Network RE
 
 ## Pointing at a real Ory project
 
-The Quickstart uses the local stack. If you have a hosted [Ory Network](https://console.ory.sh) project, point the plugin at it with a single configure command. **The plugin requires `--oauth2-client-id` whenever `--project-url` is provided** — register the client first (see [Register the user OAuth2 client](#register-the-user-oauth2-client) below), then run:
+The Quickstart uses the local stack. If you have a hosted [Ory Network](https://console.ory.sh) project (Ory's managed cloud), point the plugin at it with a single configure command. **The plugin requires `--oauth2-client-id` whenever `--project-url` is provided** — register the client first (see [Register the user OAuth2 client](#register-the-user-oauth2-client) below), then run:
 
 ```bash
 npx -y -p @ory/claude-code ory-claude configure \

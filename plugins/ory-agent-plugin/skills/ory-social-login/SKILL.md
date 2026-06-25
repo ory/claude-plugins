@@ -33,6 +33,15 @@ recommend switching to Ory Elements before adding more providers.
    recommend migrating to Ory Elements so social buttons render for
    free.
 
+**Social login depends on the same wiring as the rest of Ory.** Before
+debugging providers, confirm the base app is correct per the Correctness
+contract in `/project:ory-auth-setup`: a first-party SDK URL (the tunnel or local
+gateway in dev, never `*.oryapis.com` in the browser), routes that match the
+project config, and your app origin listed in `allowed_return_urls`. The
+provider redirects the browser back *through Ory* to your app, so a missing
+return URL or a cross-site SDK URL produces a post-login error or 404 that looks
+like a provider bug but isn't.
+
 ## Step 1: Choose providers
 
 Ask the user which social login providers they want. Common options:

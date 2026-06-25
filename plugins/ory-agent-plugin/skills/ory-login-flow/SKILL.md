@@ -24,6 +24,27 @@ rendering belongs in the fallback section at the end of this skill.
   no per-app rewrite needed.
 - Works in Next.js (App Router and Pages Router) and any React SPA.
 
+## Avoid the 404 / 500 / CSRF traps
+
+These pages only work if the surrounding wiring is correct — most "the login
+page is broken" reports are wiring, not the pages or the plugin. If you have not
+run `/project:ory-auth-setup`, do that first; it establishes the four invariants these
+pages depend on:
+
+- **First-party SDK URL** — the browser must reach Ory on your own origin (the
+  Ory Tunnel or local gateway, `http://localhost:4000` in dev), never
+  `https://<slug>.projects.oryapis.com` directly, or every form submit fails
+  with a CSRF error.
+- **Routes match the project config** — the `/auth/*` paths below must match the
+  project's self-service `ui_url`s and the middleware lists, and you must create
+  an `/auth/error` page, or Ory's redirects 404.
+- **Server calls forward cookies** — server-side session/flow reads must forward
+  the request cookies (the `@ory/nextjs` server helpers do this); reusing the
+  browser client on the server 500s.
+
+See the **Correctness contract** and the **App bug vs. plugin bug** triage in
+`/project:ory-auth-setup` for the full detail.
+
 ## Before you start
 
 Check the project setup:
@@ -270,18 +291,39 @@ Initialize with `createBrowserSettingsFlow` and render
 component handles password changes, profile traits, MFA enrollment,
 and connected social providers.
 
+## Build the error page (do not skip — missing it causes 404s)
+
+Ory redirects the browser to the error UI on **any** flow error (expired flow,
+validation failure, misconfiguration). If that route doesn't exist the user
+hits a 404 or a blank page instead of a readable message, and the failure looks
+like a plugin bug when it's just a missing page.
+
+Create `app/auth/error/page.tsx` and render the Elements error view for your
+installed version (`getFlowError` from `@ory/nextjs/app` + the Elements error
+component). Make sure its path matches the project's `error.ui_url`
+(see `/project:ory-auth-setup`, Step 8). For a React SPA, fetch the error with
+`getFlowError({ id })` from the `error` query param and display
+`error.error.message`.
+
 ## Add session management
 
-Create a utility to check the current session:
+Create a **browser** utility to check the current session. (For server
+components, route handlers, and middleware, use the `@ory/nextjs` server
+helpers instead — they forward the request cookies. Reusing this browser client
+on the server has no cookies and will 500/401.)
 
 ```typescript
 import { FrontendApi, Configuration, Session } from "@ory/client-fetch";
 
+const sdkUrl = process.env.NEXT_PUBLIC_ORY_SDK_URL;
+if (!sdkUrl) {
+  throw new Error("NEXT_PUBLIC_ORY_SDK_URL is not set — see ory-auth-setup Step 4.");
+}
+
+// Browser-only client. `credentials: "include"` only sends cookies in the browser,
+// and sdkUrl must be your own origin (the tunnel/gateway in dev), not *.oryapis.com.
 const ory = new FrontendApi(
-  new Configuration({
-    basePath: process.env.NEXT_PUBLIC_ORY_SDK_URL,
-    credentials: "include",
-  })
+  new Configuration({ basePath: sdkUrl, credentials: "include" }),
 );
 
 export async function getSession(): Promise<Session | null> {
@@ -345,14 +387,33 @@ falling back to custom node rendering.
 
 ## Test the flow
 
-1. Start the dev server and Ory tunnel (if developing locally)
-2. Visit `/auth/registration` to create an account — confirm Elements
-   renders all configured methods (password, social, passkey, etc.)
-3. Visit `/auth/login` to sign in
-4. Verify session is established (check protected routes)
-5. Test `/auth/recovery` with a registered email
-6. Test `/auth/settings` for profile changes
-7. Test logout
+Don't stop at "the page renders." Run these in order — each one isolates a
+different failure class:
+
+1. Start the dev server **and the Ory tunnel** (local dev against Network), or
+   the local stack. Confirm the browser SDK URL is your own origin, not
+   `*.oryapis.com`.
+2. **Flow API reachable (isolates Ory from your app):**
+
+   ```bash
+   curl -i "$NEXT_PUBLIC_ORY_SDK_URL/self-service/login/browser"
+   ```
+
+   Expect `200` and a `Set-Cookie: csrf_token...` header. If this fails it's the
+   tunnel / Ory config, not your pages.
+3. **No 404s:** visit `/auth/login`, `/auth/registration`, `/auth/recovery`,
+   `/auth/verification`, `/auth/settings`, and `/auth/error` — each returns
+   `200`. A 404 means a route/`ui_url` mismatch.
+4. Register at `/auth/registration` — confirm Elements renders all configured
+   methods (password, social, passkey, etc.).
+5. Sign in at `/auth/login`; confirm a protected route loads, and redirects to
+   login when signed out.
+6. Test `/auth/recovery` with a registered email, `/auth/settings` for profile
+   changes, and logout.
+
+If a submit fails with a CSRF error, the SDK URL is cross-site (trap #1). If a
+redirect 404s, a route doesn't match the project config (trap #2). Neither is a
+plugin bug — see the **App bug vs. plugin bug** triage in `/project:ory-auth-setup`.
 
 ## Fallback: rendering UI nodes by hand
 
