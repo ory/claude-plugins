@@ -233,7 +233,9 @@ Create the following page structure:
 - `app/auth/registration/page.tsx` — `<Registration flow={flow} />`
 - `app/auth/recovery/page.tsx` — `<Recovery flow={flow} />`
 - `app/auth/verification/page.tsx` — `<Verification flow={flow} />`
-- `app/auth/settings/page.tsx` — `<Settings flow={flow} />`
+- `app/auth/settings/page.tsx` — `<Settings flow={flow} />`, wrapped in
+  `<SessionProvider>` from `@ory/elements-react/client` (Settings is the only
+  flow that needs it — see `/project:ory-login-flow`)
 
 Each page initializes its flow with `getLoginFlow`, `getRegistrationFlow`,
 etc. from `@ory/nextjs/app`, then hands the flow to the matching

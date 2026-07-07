@@ -264,6 +264,7 @@ Create `app/auth/settings/page.tsx`:
 
 ```typescript
 import { Settings } from "@ory/elements-react/theme"
+import { SessionProvider } from "@ory/elements-react/client"
 import { getSettingsFlow, OryPageLayout } from "@ory/nextjs/app"
 
 export default async function SettingsPage(props: {
@@ -278,16 +279,26 @@ export default async function SettingsPage(props: {
 
   return (
     <OryPageLayout>
-      <Settings flow={flow} />
+      <SessionProvider>
+        <Settings flow={flow} />
+      </SessionProvider>
     </OryPageLayout>
   )
 }
 ```
 
+Unlike the other flows, **`<Settings>` must be wrapped in `<SessionProvider>`**
+from `@ory/elements-react/client`. Settings renders session-dependent controls
+(connected social accounts, unlinking, logout of other sessions) that read from
+the session context; the pre-auth pages (login, registration, recovery,
+verification) have no session yet and do not need the provider.
+
 ### Settings — React SPA
 
 Initialize with `createBrowserSettingsFlow` and render
-`<Settings flow={flow} />` from `@ory/elements-react/theme`. The
+`<Settings flow={flow} />` from `@ory/elements-react/theme`, wrapped in
+`<SessionProvider>` from `@ory/elements-react/client` (the same requirement
+as the App Router page above — Settings reads session-dependent state). The
 component handles password changes, profile traits, MFA enrollment,
 and connected social providers.
 
@@ -385,6 +396,71 @@ For larger design changes, the Ory Elements primitives package exposes
 the underlying card, button, and input components — use those before
 falling back to custom node rendering.
 
+## Enable MFA and passkeys
+
+These are **project-side** capabilities: once enabled on the Ory project, the
+`<Login>`, `<Registration>`, and `<Settings>` components render the second-factor
+and passkey UI automatically — **no page code changes**. Configure them with the
+Ory CLI against your project (`ory list projects` for the id), the same idiom as
+`/project:ory-social-login`. Against the local stack, apply the equivalent keys to the
+local Kratos config instead (`/project:ory-local-dev`).
+
+### Passkeys
+
+```bash
+ory patch identity-config <project-id> \
+  --add '/selfservice/methods/passkey/enabled=true' \
+  --add '/selfservice/methods/passkey/config/rp/display_name="My App"' \
+  --add '/selfservice/methods/passkey/config/rp/id="your-domain.com"' \
+  --add '/selfservice/methods/passkey/config/rp/origins=["https://your-domain.com"]'
+```
+
+- `rp.id` is the **domain only** — no scheme, no port (`example.com`, not
+  `https://example.com:3000`).
+- `rp.origins` must list the **exact scheme+host+port** the browser uses.
+- For local dev, WebAuthn treats `localhost` as a secure origin: set
+  `rp.id="localhost"` and `rp.origins=["http://localhost:3000"]` (match your app
+  URL). Passkeys registered against `localhost` won't work on the deployed domain
+  and vice-versa.
+
+### MFA methods
+
+Enable the second factors you want. Backup codes (`lookup_secret`) should always
+be enabled alongside any other method so a user who loses their device can
+recover.
+
+```bash
+# TOTP (authenticator app)
+ory patch identity-config <project-id> \
+  --add '/selfservice/methods/totp/enabled=true' \
+  --add '/selfservice/methods/totp/config/issuer="My App"'
+
+# Backup codes
+ory patch identity-config <project-id> \
+  --add '/selfservice/methods/lookup_secret/enabled=true'
+
+# Email code as a second factor
+ory patch identity-config <project-id> \
+  --add '/selfservice/methods/code/mfa_enabled=true'
+```
+
+### Require the second factor (do not skip)
+
+Enabling a method only lets users *enroll* — it does not *require* the second
+factor. Without this step MFA is opt-in and unenforced. Set the required
+assurance level to the highest the identity has available:
+
+```bash
+ory patch identity-config <project-id> \
+  --add '/selfservice/flows/settings/required_aal="highest_available"' \
+  --add '/session/whoami/required_aal="highest_available"'
+```
+
+With `highest_available`, `toSession()` / `getServerSession()` return an
+incomplete session (AAL1) until the user clears the second factor, and Elements
+prompts for it on the next `<Login>`. Your route protection should treat an
+AAL1 session on an MFA-enrolled user as unauthenticated.
+
 ## Test the flow
 
 Don't stop at "the page renders." Run these in order — each one isolates a
@@ -415,6 +491,43 @@ If a submit fails with a CSRF error, the SDK URL is cross-site (trap #1). If a
 redirect 404s, a route doesn't match the project config (trap #2). Neither is a
 plugin bug — see the **App bug vs. plugin bug** triage in `/project:ory-auth-setup`.
 
+### Writing E2E tests (Playwright)
+
+Automating these flows has three gotchas that cause flaky or wrong-for-the-wrong-
+reason failures. Get them right up front:
+
+1. **Match URLs by pattern, never literally.** Ory appends `?flow=<uuid>` on
+   every flow redirect, so an exact-string wait never matches.
+
+   ```typescript
+   await page.waitForURL(/\/auth\/login\?flow=/)   // regex
+   await page.waitForURL("**/dashboard**")          // glob — also matches query params
+   // wrong: await page.waitForURL("http://localhost:3000/auth/login")
+   ```
+
+2. **Use strong, dissimilar credentials.** Kratos rejects passwords that are too
+   similar to the identifier or that appear in a breach database — a weak fixture
+   password fails validation, not the flow you meant to test.
+
+   ```typescript
+   const email = `test-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`
+   const password = "Str0ngP@ssword!123"   // fixed, strong, not in any breach list
+   ```
+
+3. **Assert on Ory Elements' own testids, not form-level selectors.** Validation
+   messages render inside the auth card, keyed by Kratos UI message id (the
+   `4xxxxxx` range is validation errors), not on the flow wrapper.
+
+   ```typescript
+   page.locator('[data-testid^="ui/message/4"]')  // any validation error
+   page.locator('[data-testid="login-auth-card"]').getByText(/credentials|invalid/i)
+   // wrong: page.locator('[data-testid="login-flow"]').getByText(...) — errors aren't here
+   ```
+
+These selectors track the installed `@ory/elements-react` version; if a testid
+assertion breaks after an Elements upgrade, inspect the rendered DOM before
+assuming a flow bug.
+
 ## Fallback: rendering UI nodes by hand
 
 Use this path **only** when Ory Elements cannot run in the target
@@ -437,8 +550,9 @@ Ory flow API changes manually.
 - Add social login providers: use `/project:ory-social-login`.
   Elements renders the buttons automatically once providers are
   configured server-side.
-- Add multi-factor authentication via Ory project settings — the
-  `<Login>` and `<Settings>` components handle the second-factor UI.
+- Add multi-factor authentication and passkeys — see **Enable MFA and
+  passkeys** above. Once the project is configured, the `<Login>` and
+  `<Settings>` components render the second-factor and passkey UI automatically.
 - Customize the identity schema for additional profile fields. Elements
   reads the schema from the flow and renders new fields automatically.
 - Set up webhooks for registration events.
