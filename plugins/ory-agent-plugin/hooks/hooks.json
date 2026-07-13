@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.12.0 ory-claude-hook"
+            "command": "npx -y -p @ory/claude-code@0.12.1 ory-claude-hook"
           }
         ]
       }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.12.0 ory-claude-hook"
+            "command": "npx -y -p @ory/claude-code@0.12.1 ory-claude-hook"
           }
         ]
       }
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.12.0 ory-claude-hook"
+            "command": "npx -y -p @ory/claude-code@0.12.1 ory-claude-hook"
           }
         ]
       }
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.12.0 ory-claude-hook"
+            "command": "npx -y -p @ory/claude-code@0.12.1 ory-claude-hook"
           }
         ]
       }
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.12.0 ory-claude-hook"
+            "command": "npx -y -p @ory/claude-code@0.12.1 ory-claude-hook"
           }
         ]
       }
@@ -62,7 +62,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.12.0 ory-claude-hook"
+            "command": "npx -y -p @ory/claude-code@0.12.1 ory-claude-hook"
           }
         ]
       }
@@ -73,7 +73,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.12.0 ory-claude-hook"
+            "command": "npx -y -p @ory/claude-code@0.12.1 ory-claude-hook"
           }
         ]
       }
@@ -84,7 +84,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.12.0 ory-claude-hook"
+            "command": "npx -y -p @ory/claude-code@0.12.1 ory-claude-hook"
           }
         ]
       }
@@ -95,7 +95,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.12.0 ory-claude-hook"
+            "command": "npx -y -p @ory/claude-code@0.12.1 ory-claude-hook"
           }
         ]
       }
