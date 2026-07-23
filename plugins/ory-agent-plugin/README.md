@@ -21,11 +21,13 @@ Run one command. It installs the plugin and walks you through connecting:
 npx -y -p @ory/claude-code ory-claude install
 ```
 
-You'll be asked how you want to connect — **press Enter for the default**:
+It opens a guided setup **in your browser** where you pick how to connect — the default takes just a click:
 
 - **Ory Network** *(default)* — sign in, or create a free account, in your browser. The project, keys, permissions, and login are all set up for you. Nothing to configure by hand.
 - **Local** — run a complete Ory on your laptop with Docker. No account, no signup, no keys. Great for trying it out.
 - **Audit-only** — skip Ory entirely and just log what Claude does.
+
+> No browser available (CI, SSH, headless)? The same walkthrough runs right in your terminal instead — or force it with `--no-web`.
 
 That's it. Confirm everything landed with:
 
@@ -52,6 +54,7 @@ If Ory is ever unreachable, the plugin gets out of the way and lets Claude keep 
 Everything the plugin does is observable out of the box — no configuration required:
 
 - **Status at a glance.** `npx -y -p @ory/claude-code ory-claude status` shows what's configured, who's signed in, how many built-in tools your permissions cover, and the most recent tool-call activity.
+- **Live dashboard.** `npx -y -p @ory/claude-code ory-claude dashboard` opens the same picture in your browser — configuration, identities, permission coverage, Ory service health, and the latest tool-call activity, all refreshing live. From there you can flip **enforcement** on or off, toggle **user login**, and use **Change stack** to reconnect to a different Ory — no CLI required.
 - **Live traces.** Every tool call is recorded as an OpenTelemetry-style span. Watch them stream as the agent works:
 
   ```bash
@@ -69,7 +72,7 @@ When the watch-mode logs look right, turn on blocking with one command (setup al
 npx -y -p @ory/claude-code ory-claude permissions enforce
 ```
 
-Now a denied tool is actually blocked and Claude shows why. Go back to watch mode anytime with `permissions observe`. Use `permissions status` to see what's covered and `permissions bootstrap` to (re-)grant the built-in tools — or just ask Claude in chat, e.g. *"grant me use of the Bash tool."*
+Now a denied tool is actually blocked and Claude shows why. Go back to watch mode anytime with `permissions observe`. Prefer clicking? The dashboard has the same **Enforce** switch — flip it on, or back to watch mode, without touching the CLI. Use `permissions status` to see what's covered and `permissions bootstrap` to (re-)grant the built-in tools — or just ask Claude in chat, e.g. *"grant me use of the Bash tool."*
 
 ## Also: add login to your own app
 
@@ -84,8 +87,7 @@ The guided setup covers most people. For scripted or CI setups, or to point at a
 ```bash
 npx -y -p @ory/claude-code ory-claude configure \
   --project-url https://<slug>.projects.oryapis.com \
-  --oauth2-client-id <login client id> \
-  --user-login
+  --oauth2-client-id <login client id>
 ```
 
 Claude's own identity registers itself automatically on first run — nothing to create. The `--oauth2-client-id` is the one piece browser sign-in needs; the guided setup makes it for you, or see below to do it by hand. For logging-only with no checks, use `--audit-only`.
@@ -97,7 +99,7 @@ The guided setup normally does this. To do it yourself, create a **public** OAut
 
 ```bash
 ory create oauth2-client --project <project-id> \
-  --name "ory-agent-plugin" \
+  --name "Ory Agent Security · user login (PKCE)" \
   --grant-type authorization_code,refresh_token \
   --response-type code \
   --scope openid,offline_access \
@@ -117,11 +119,12 @@ With nothing configured, the plugin still loads and runs in **pass-through mode*
 ## Commands
 
 ```
-ory-claude install | uninstall        Install/remove; --reconfigure re-runs setup, --no-configure skips it
+ory-claude install | uninstall        Install/remove; --reconfigure re-runs setup, --no-web forces the terminal wizard, --no-configure skips it
 ory-claude status                     Show configuration, identities, permission coverage, recent activity
+ory-claude dashboard                  Open the live browser dashboard (status + service health + Change stack)
 ory-claude watch                      Tail the live trace stream (OTel spans)
 ory-claude permissions <cmd>          status | bootstrap | observe (watch) | enforce (block)
-ory-claude configure <flags>          Point at a project by hand (--project-url, --oauth2-client-id, --user-login, --audit-only)
+ory-claude configure <flags>          Point at a project by hand (--project-url, --oauth2-client-id, --audit-only)
 ory-claude agent <status|unregister>  Manage Claude's own auto-created identity
 ory-claude local <up|down|status|…>   Run / manage a local Ory in Docker
 ```

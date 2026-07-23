@@ -83,12 +83,10 @@ function bootstrap(): Promise<void> {
       await ensureUserAuthenticated(ory, {
         binName: "temporal-worker",
         harness: "temporal",
-        // Temporal's Activity entry point has no channel to carry a
-        // session-start block, so the user gate runs in advisory mode:
-        // it still refreshes tokens and emits the audit span, but the
-        // worker proceeds even if the user is unauthenticated. Hard
-        // enforcement happens at the per-Activity permission check.
-        allowBlock: false,
+        // The user gate runs every invocation and never blocks: it refreshes
+        // tokens and emits the audit span, but the worker proceeds even if the
+        // user is unauthenticated. Enforcement happens at the per-Activity
+        // permission check (permissionMode).
       });
       await ensureAgentIdentity(ory, {
         projectUrl: process.env.ORY_PROJECT_URL,
@@ -145,10 +143,10 @@ Key choices:
 
 - **Activities call Ory, Workflows don't.** Anything that needs a live decision
   goes in an Activity. Workflows only orchestrate.
-- **`allowBlock: false`.** The Activity boundary can't carry a session-start
-  block, so the user gate runs in advisory mode. Enforcement is at the
-  permission check, which throws on deny — Temporal will mark the Activity as
-  failed and surface the error via the Workflow result or retry policy.
+- **The user gate never blocks.** It runs every invocation to refresh the user
+  identity, but always proceeds. Enforcement is at the permission check, which
+  throws on deny — Temporal will mark the Activity as failed and surface the
+  error via the Workflow result or retry policy.
 - **`harness: "temporal"`.** Distinguishes worker-originated spans in the trace
   file from CLI plugin spans.
 - **Span attributes carry the Workflow + Activity IDs.** This is how operators

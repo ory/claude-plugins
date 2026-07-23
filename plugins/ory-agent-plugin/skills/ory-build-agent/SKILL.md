@@ -86,16 +86,13 @@ import {
 const client = OryAgentClient.fromEnv("my-agent");
 const { projectUrl } = resolveConfig();
 
-// 1. User gate — interactive PKCE when ORY_USER_LOGIN=true, no-op otherwise.
-const userDecision = await ensureUserAuthenticated(client, {
+// 1. User gate — interactive PKCE; runs every session and never blocks.
+//    Establishes the user identity for attribution; a declined/skipped login
+//    is audited and the flow proceeds (enforcement is at the tool gate).
+await ensureUserAuthenticated(client, {
   binName: "my-agent",
   harness: "my-agent",
-  allowBlock: true, // flip to false if your agent can't refuse to start
 });
-if (userDecision.proceed === false) {
-  console.error(`Ory user login: ${userDecision.reason}`);
-  process.exit(2);
-}
 
 // 2. Agent gate — never blocks; resolves machine credentials (DCR by default).
 await ensureAgentIdentity(client, { projectUrl, harness: "my-agent" });
@@ -113,10 +110,11 @@ if (client.userPrincipal.subject && client.agentPrincipal.subject) {
 }
 ```
 
-Set `allowBlock: false` when the agent runs in-process inside a parent
-application and can't refuse to start. The gate still runs in advisory mode
-— it refreshes tokens, prompts on TTY, emits the `user.auth` span — but
-always returns `proceed: true`.
+The user gate runs on every session and is always non-blocking: it refreshes
+tokens, prompts on TTY, and emits the `user.auth` span, but always returns
+`proceed: true`. A missing or declined login never stops the agent — the
+consequence surfaces at the tool gate, where `permissionMode: enforce` denies
+and `observe` audits.
 
 ## Step 4 — The shared gate body
 
@@ -409,8 +407,8 @@ PKCE flow, permission tuples, and trace spans are all visible:
 1. `/ory-agent-plugin:local-up` — brings up Kratos / Keto / Hydra on `localhost:4000`
    and seeds a demo user. The banner prints the email + password.
 2. Export the env vars the launcher writes (`ORY_PROJECT_URL`,
-   `ORY_USER_LOGIN=true`, `ORY_OAUTH2_CLIENT_ID`, optional
-   `ORY_AGENT_TRACE_FILE` for an NDJSON span log).
+   `ORY_OAUTH2_CLIENT_ID`, optional `ORY_AGENT_TRACE_FILE` for an NDJSON
+   span log). The user login runs every session.
 3. Start your agent. Confirm the browser opens for PKCE login.
 4. Invoke a gated tool and `tail -f $ORY_AGENT_TRACE_FILE | jq .` — you
    should see `user.auth` → `agent.auth` → `permission.check` →
