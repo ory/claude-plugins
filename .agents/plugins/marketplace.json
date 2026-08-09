@@ -1,0 +1,36 @@
+{
+  "name": "ory",
+  "interface": {
+    "displayName": "Ory"
+  },
+  "plugins": [
+    {
+      "name": "lumen",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/ory/lumen.git",
+        "path": "plugins/lumen"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL",
+        "products": ["CODEX"]
+      },
+      "category": "Developer Tools",
+      "description": "Precise local semantic code search for Codex, powered by local embedding models."
+    },
+    {
+      "name": "ory-agent-plugin",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ory-agent-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "development",
+      "description": "Ory plugin for Claude Code: scaffolding skills, a local Ory instance, and authentication, authorization, and audit for every tool call"
+    }
+  ]
+}
