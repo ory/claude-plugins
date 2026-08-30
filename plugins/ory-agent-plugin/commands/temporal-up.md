@@ -26,7 +26,7 @@ The process runs in the foreground. Stop it with `Ctrl+C`; data is preserved.
 For a clean reset, delete `~/.config/temporalio/` and start again.
 
 For the matching Ory side of the stack (Identities, Permissions, OAuth2, login
-UI, Jaeger), use `/ory-agent-plugin:local-up`. The two stacks are independent — Temporal
+UI), use `/ory-agent-plugin:local-up`. The two stacks are independent — Temporal
 runs on `:7233/:8233`, Ory runs on `:4000` and friends — so they can run side
 by side without port conflicts.
 

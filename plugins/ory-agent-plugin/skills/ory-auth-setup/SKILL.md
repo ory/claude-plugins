@@ -399,7 +399,7 @@ right place:
   route, or in the browser Network tab, is an **app/config** issue — work the
   four contract items and the checks above.
 - **The agent plugin** governs *this coding session* — it authenticates the
-  agent, checks Ory Permissions before each tool call, and writes trace spans. It
+  agent, checks Ory Permissions before each tool call, and writes activity events. It
   never serves your app's HTTP routes. Diagnose it with
   `npx -y -p @ory/claude-code ory-claude status` and the debug log (`ORY_AGENT_DEBUG=true`), **not** by looking
   at your app's auth pages.

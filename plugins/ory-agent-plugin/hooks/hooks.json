@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.14.0 ory-claude-hook"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ory-hook.js\""
           }
         ]
       }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.14.0 ory-claude-hook"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ory-hook.js\""
           }
         ]
       }
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.14.0 ory-claude-hook"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ory-hook.js\""
           }
         ]
       }
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.14.0 ory-claude-hook"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ory-hook.js\""
           }
         ]
       }
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.14.0 ory-claude-hook"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ory-hook.js\""
           }
         ]
       }
@@ -62,7 +62,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.14.0 ory-claude-hook"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ory-hook.js\""
           }
         ]
       }
@@ -73,7 +73,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.14.0 ory-claude-hook"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ory-hook.js\""
           }
         ]
       }
@@ -84,7 +84,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.14.0 ory-claude-hook"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ory-hook.js\""
           }
         ]
       }
@@ -95,7 +95,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y -p @ory/claude-code@0.14.0 ory-claude-hook"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ory-hook.js\""
           }
         ]
       }

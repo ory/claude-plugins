@@ -38,6 +38,7 @@ After `/ory-agent-plugin:local-up` completes:
 | Service       | URL                              | Purpose                              |
 |---------------|----------------------------------|--------------------------------------|
 | Gateway       | `http://localhost:4000`          | Unified API (mirrors Ory Network)    |
+| Agent Security| `https://agents.console.ory:8080`| Canonical permission/delegation broker |
 | Kratos public | `http://localhost:4433`          | Self-service flows (login, etc.)     |
 | Kratos admin  | `http://localhost:4434`          | Identity & session admin             |
 | Keto read     | `http://localhost:4466`          | Permission checks                    |
@@ -49,7 +50,7 @@ The seed step also produces:
 
 - Test identity: `agent@ory-local.dev`
 - A live session token (printed at the end of `/ory-agent-plugin:local-up`)
-- Permission tuples in the `AgentTools` namespace for common tool names
+- Permission tuples in the `AgentTool` namespace for common tool names
 - An OAuth2 client (`ory-agent-plugins-local`, `client_credentials` grant)
 
 ## Step 1: Verify Docker is running
@@ -73,10 +74,13 @@ npx -y -p @ory/claude-code ory-claude local up
 ```
 
 Wait for the command to print "All services are running!" and the seed
-output. Capture two values from the output:
+output. Configure these connection values:
 
 - `ORY_PROJECT_URL` (always `http://localhost:4000`)
-- `ORY_SESSION_TOKEN` (the seeded session token)
+- `ORY_AGENT_SECURITY_URL` (`https://agents.console.ory:8080`; run the Agent Security service separately)
+- `ORY_OAUTH2_CLIENT_ID` (the seeded PKCE login client)
+- the seeded user's email + password, which you type into the login UI
+  when the browser opens
 
 If the user wants to skip seeding (to bring their own data), use
 `npx -y -p @ory/claude-code ory-claude local up --no-seed` instead.
@@ -134,13 +138,19 @@ Two ways to exercise the flows:
    with password `ory-agent-local-dev-password!` to test session-bearing
    pages without going through registration.
 
-For automated tests against the running stack, use the seeded session
-token directly:
+For automated tests against the running stack, log in through Kratos to
+get a session token and call the session API with it:
 
 ```bash
-curl -H "X-Session-Token: $ORY_SESSION_TOKEN" \
+KRATOS_SESSION_TOKEN=$(...)   # from a Kratos login flow
+curl -H "X-Session-Token: $KRATOS_SESSION_TOKEN" \
      http://localhost:4000/sessions/whoami
 ```
+
+That token is a **Kratos session token** — it authenticates the Kratos
+session API only. It is not what the plugin uses: the plugin's env
+credential (`ORY_USER_OAUTH2_TOKEN`) must be an OAuth2 access token,
+because it authenticates delegation and can bootstrap the agent's OAuth2 client.
 
 ## Step 6: Iterate
 
@@ -191,7 +201,7 @@ plugin updates the bundled service configs.
   config change is needed. For non-localhost dev URLs, switch back to
   the Ory Tunnel + a Network project.
 - **Permission checks always deny** — the seeded tuples live in the
-  `AgentTools` namespace. If your app uses a different namespace, set
+  `AgentTool` namespace. If your app uses a different namespace, set
   `ORY_PERMISSION_NAMESPACE` before `local seed`, or write the tuples
   manually via the Keto write API on `:4467`.
 

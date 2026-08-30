@@ -2,10 +2,9 @@
   "description": "Ory Claude Code MCP Server",
   "mcpServers": {
     "ory-claude-mcp": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "@ory/mcp-server@0.14.0"
+        "${CLAUDE_PLUGIN_ROOT}/hooks/ory-mcp-server.js"
       ]
     }
   }

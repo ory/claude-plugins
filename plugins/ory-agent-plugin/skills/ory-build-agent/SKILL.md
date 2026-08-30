@@ -1,25 +1,22 @@
 ---
 name: ory-build-agent
-description: Build your own AI agent that authenticates the user, authorizes every tool call against Ory Permissions, and emits trace spans — by dropping `@ory/argus` directly into the Claude Agent SDK, OpenAI Agents SDK, Mastra, Vercel AI SDK, PydanticAI / LangGraph, or as an external service called by Salesforce Agentforce. Use when the user wants to wire Ory into a custom agent they own — phrases like "add Ory to my own agent", "build a custom agent with Ory auth", "wrap my Claude Agent SDK tools with Ory permissions", "OpenAI Agents SDK with Ory", "Mastra agent with Ory permissions", "Agentforce action with Ory", "use `@ory/argus` directly". For wiring Ory into an existing agent harness (Claude Code, Codex, Gemini CLI, OpenClaw, OpenCode) use the corresponding `@ory/<harness>` plugin instead.
+description: Build your own AI agent that authenticates the user, authorizes every tool call against Ory Permissions, and records structured activity — by dropping `@ory/argus` directly into the Claude Agent SDK, OpenAI Agents SDK, Mastra, Vercel AI SDK, PydanticAI / LangGraph, or as an external service called by Salesforce Agentforce. Use when the user wants to wire Ory into a custom agent they own — phrases like "add Ory to my own agent", "build a custom agent with Ory auth", "wrap my Claude Agent SDK tools with Ory permissions", "OpenAI Agents SDK with Ory", "Mastra agent with Ory permissions", "Agentforce action with Ory", "use `@ory/argus` directly". For wiring Ory into an existing agent harness (Claude Code, Codex, Gemini CLI, OpenClaw, OpenCode) use the corresponding `@ory/<harness>` plugin instead.
 ---
 
 # Build your own agent with `@ory/argus`
 
-You are helping the user wire Ory Identities, Permissions, and tracing into
+You are helping the user wire Ory Identities, Permissions, and activity auditing into
 **an agent they are building themselves**. They are not extending Claude Code,
 Codex, or one of the other harness plugins — they own the agent loop and
 choose where to intercept tool calls.
 
 The integration is the same three moves regardless of SDK:
 
-1. **User gate at start.** `ensureUserAuthenticated(client, …)` — the human at
-   the keyboard becomes the subject of every permission check.
-2. **Agent gate at start.** `ensureAgentIdentity(client, …)` — the process
-   making outbound Ory API calls gets its own credential (OAuth2 Dynamic
-   Client Registration by default, persisted across sessions).
-3. **Permission check on every tool call.** Wrap the SDK's tool dispatch with
-   `checkAndDecide(client, …)` and branch on `decision.kind`. Record a
-   `tool.complete` span after the tool returns.
+1. **Session start.** `sessionStart(client, …)` runs user and agent identity,
+   delegation, permission-mode warming, and fail-open handling.
+2. **Permission check on every tool call.** Wrap the SDK's tool dispatch with
+   `gate(client, …)` and translate `result.blocked` into the SDK's veto signal.
+3. **Completion.** Call `complete(client, …)` after the tool returns.
 
 `@ory/argus` ships every helper and handles fail-open semantics (network
 errors, rate limits, unconfigured project → allow). The SDKs differ only in
@@ -52,7 +49,7 @@ Also establish:
 
 - **Interactive vs headless.** Desktop / terminal agents can run PKCE login.
   Headless services (CI, daemons, Salesforce side-cars) must pre-supply
-  `ORY_USER_SESSION_TOKEN` or `ORY_USER_OAUTH2_TOKEN`.
+  `ORY_USER_OAUTH2_TOKEN`.
 - **Which tools to gate.** Usually all of them. Some SDKs have built-in
   "safe" steps (an LLM-only reasoning step, a model-provided memory tool)
   that don't need a permission check.
@@ -70,7 +67,7 @@ That's the only Ory dependency you need. The Ory SDK clients
 (`@ory/client`) and the OAuth2/PKCE plumbing are re-exported and ready to
 use.
 
-## Step 3 — Construct the client and run both gates
+## Step 3 — Construct the client and start the session
 
 Put this at the top of the agent's bootstrap, before the agent loop starts
 processing the first message:
@@ -78,40 +75,15 @@ processing the first message:
 ```ts
 import {
   OryAgentClient,
-  ensureUserAuthenticated,
-  ensureAgentIdentity,
-  resolveConfig,
+  sessionStart,
 } from "@ory/argus";
 
 const client = OryAgentClient.fromEnv("my-agent");
-const { projectUrl } = resolveConfig();
-
-// 1. User gate — interactive PKCE; runs every session and never blocks.
-//    Establishes the user identity for attribution; a declined/skipped login
-//    is audited and the flow proceeds (enforcement is at the tool gate).
-await ensureUserAuthenticated(client, {
-  binName: "my-agent",
-  harness: "my-agent",
-});
-
-// 2. Agent gate — never blocks; resolves machine credentials (DCR by default).
-await ensureAgentIdentity(client, { projectUrl, harness: "my-agent" });
-
-// 3. (optional) write the user→agent delegation tuple for audit.
-if (client.userPrincipal.subject && client.agentPrincipal.subject) {
-  await client
-    .createRelationship({
-      namespace: process.env.ORY_PERMISSION_NAMESPACE ?? "AgentTools",
-      object: `agent:${client.agentPrincipal.subject}`,
-      relation: "delegate",
-      subjectId: `user:${client.userPrincipal.subject}`,
-    })
-    .catch(() => undefined); // audit-only — swallow failures
-}
+await sessionStart(client, { harness: "my-agent" });
 ```
 
 The user gate runs on every session and is always non-blocking: it refreshes
-tokens, prompts on TTY, and emits the `user.auth` span, but always returns
+tokens, prompts on TTY, and emits the `user.auth` activity event, but always returns
 `proceed: true`. A missing or declined login never stops the agent — the
 consequence surfaces at the tool gate, where `permissionMode: enforce` denies
 and `observe` audits.
@@ -123,48 +95,25 @@ Put it next to where you construct the client.
 
 ```ts
 import {
-  checkAndDecide,
-  resolveUserSubject,
-  subjectLabel,
+  complete,
+  gate,
 } from "@ory/argus";
 
-async function gateTool(toolName: string, sessionId: string) {
-  const subject = resolveUserSubject(client, `session:${sessionId}`);
-  const decision = await checkAndDecide(
-    client,
-    {
-      namespace: process.env.ORY_PERMISSION_NAMESPACE ?? "AgentTools",
-      object: toolName,
-      relation: "use",
-      ...subject,
-    },
-    { spanAttributes: { toolName } }
-  );
-
-  switch (decision.kind) {
-    case "allow":
-    case "observe":
-    case "fail_open":
-      return { allow: true as const };
-    case "deny":
-      return {
-        allow: false as const,
-        message: `Ory denied ${toolName} for ${subjectLabel(subject)}.`,
-      };
-  }
+async function gateTool(toolName: string, toolArgs?: unknown) {
+  const result = await gate(client, { harness: "my-agent", toolName, toolArgs });
+  return result.blocked
+    ? { allow: false as const, message: result.denialMessage }
+    : { allow: true as const };
 }
 ```
 
-After the tool finishes (whichever SDK), record a completion span:
+After the tool finishes (whichever SDK), record completion activity:
 
 ```ts
-client.tracer.record("tool.complete", "ok", {
-  attributes: { toolName, durationMs },
-});
+complete(client, { toolName, output });
 ```
 
-`checkAndDecide` already records `permission.check`, `permission.observe_deny`
-(on observe), and `tool.block` (on deny). You only own `tool.complete`.
+`gate` records permission and execution activity; `complete` records the terminal event.
 
 ## Step 5 — SDK-specific wiring
 
@@ -240,7 +189,7 @@ Agentforce is a declarative agent inside the Salesforce platform — you
    operations. The gate runs inside your Node service on every call; denies
    come back as tool errors the agent surfaces to the user.
 
-Pre-supply `ORY_USER_SESSION_TOKEN` (or `ORY_USER_OAUTH2_TOKEN`) to the
+Pre-supply `ORY_USER_OAUTH2_TOKEN` to the
 side-car from a session the user established out-of-band — for example, a
 PKCE flow at sign-on into the Experience Cloud site that fronts the agent.
 A headless side-car cannot run PKCE on its own.
@@ -338,13 +287,11 @@ Pure-Python agents don't link `@ory/argus` directly. The two supported
 patterns:
 
 - **Side-car HTTP service.** Run a small Node process that exposes
-  `POST /gate` (calls `gateTool`) and `POST /trace` (calls
-  `client.tracer.record(...)`). Your Python agent calls these from inside
+  `POST /gate` (calls `gateTool`). Your Python agent calls it from inside
   each `@agent.tool`.
-- **Direct Ory APIs.** Use the official `ory-client` Python SDK to call
-  `PermissionApi.check_permission()` and post audit spans to your own
-  collector. You lose the fail-open / observe-mode helpers; re-implement
-  them in Python.
+- **Native Python integration.** Use `ory-argus`, which routes checks through
+  the canonical Agent Security broker and preserves the same fail-open,
+  observe/enforce, identity, and activity behavior as the TypeScript core.
 
 Side-car pattern:
 
@@ -402,21 +349,22 @@ The `gateTool` body does not change.
 ## Step 6 — Test against the local Ory stack
 
 Before pointing at production, run the gate against the local stack so the
-PKCE flow, permission tuples, and trace spans are all visible:
+PKCE flow, permission tuples, and activity events are all visible:
 
 1. `/ory-agent-plugin:local-up` — brings up Kratos / Keto / Hydra on `localhost:4000`
    and seeds a demo user. The banner prints the email + password.
 2. Export the env vars the launcher writes (`ORY_PROJECT_URL`,
-   `ORY_OAUTH2_CLIENT_ID`, optional `ORY_AGENT_TRACE_FILE` for an NDJSON
-   span log). The user login runs every session.
+   `ORY_OAUTH2_CLIENT_ID`, and optionally `ORY_AGENT_LOG_FILE` to override the
+   default unified NDJSON log). The user login runs every session.
 3. Start your agent. Confirm the browser opens for PKCE login.
-4. Invoke a gated tool and `tail -f $ORY_AGENT_TRACE_FILE | jq .` — you
+4. Invoke a gated tool and tail `<dataDir>/<harness>/ory-agent-debug.log` with
+   `jq` — you
    should see `user.auth` → `agent.auth` → `permission.check` →
    `tool.complete` for every call.
-5. Promote to enforce once the `use` tuples are seeded: either
-   `ORY_PERMISSION_MODE=enforce` for one launch, or use one of the harness
-   CLIs to flip it persistently (e.g. `npx -y -p @ory/claude-code ory-claude
-   permissions enforce` — same shared config file).
+5. Promote to enforce once the tools are granted. The posture is a
+   permission on the Ory project, read on every session — an admin sets it
+   in the Ory Console (Agent Security); see the resolved value with
+   `... permissions` via any harness CLI (same shared config file).
 6. `/ory-agent-plugin:local-down` when done. Volumes persist, so the seeded user
    survives across runs.
 
@@ -428,9 +376,9 @@ For full env-var coverage (including the user/agent split,
 - It does not generate the agent. The user owns the agent loop, tool
   catalog, and deployment shape. This skill only drops `@ory/argus` into
   whatever they already have.
-- It does not write the permission tuples. Seed them with
-  `... permissions bootstrap` (run via any of the harness CLIs — same shared
-  config file) or by calling `client.createRelationship` directly.
+- It does not grant permissions. Those are provisioned in the Ory Console
+  (Agent Security); `@ory/argus` only reads them. Locally, the dev stack's
+  seed step grants the catalog for you.
 - It does not adapt one of the existing harness plugins (`@ory/claude-code`,
   `@ory/codex`, `@ory/gemini-cli`, `@ory/openclaw`, `@ory/opencode`). Those
   are for users running those harnesses — not building a custom agent.

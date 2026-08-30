@@ -1,6 +1,6 @@
 ---
 name: ory-e2b-sandbox
-description: Scaffold an E2B (e2b.dev) sandbox template that boots with @ory/claude-code preinstalled, so every Claude/Codex/Gemini/OpenClaw/OpenCode session running inside the sandbox is gated by Ory auth, permissions, and tracing without any per-sandbox setup. Use when the user asks to "create an E2B sandbox with Ory agent security", "build an E2B template with the Ory plugin", "make an E2B image that includes Ory auth", or any close variant. The skill generates the template files in the user's project — it does not deploy them.
+description: Scaffold an E2B (e2b.dev) sandbox template that boots with @ory/claude-code preinstalled, so every Claude/Codex/Gemini/OpenClaw/OpenCode session running inside the sandbox is gated by Ory auth and permissions and records structured activity without any per-sandbox setup. Use when the user asks to "create an E2B sandbox with Ory agent security", "build an E2B template with the Ory plugin", "make an E2B image that includes Ory auth", or any close variant. The skill generates the template files in the user's project — it does not deploy them.
 ---
 
 # E2B sandbox with Ory agent security
@@ -9,8 +9,8 @@ You are helping the user scaffold an [E2B](https://e2b.dev) sandbox template
 that preinstalls and registers the @ory/claude-code plugin. The resulting template
 publishes a named image; every `Sandbox.create("<tag>")` call from their SDK
 gets a runtime where the agent's tool calls are already authenticated against
-Ory Identities, authorized against Ory Permissions, and emitted as trace
-spans — with **no** install step at sandbox boot.
+Ory Identities, authorized against Ory Permissions, and recorded as structured
+activity events — with **no** install step at sandbox boot.
 
 This skill carries the full workflow and the file contents. You generate the
 files in the user's repo; the user runs the build.
@@ -66,8 +66,7 @@ export const template = Template()
   // Sandbox runtime defaults. Per-tenant secrets (project URL, tokens, client
   // IDs) MUST be passed at Sandbox.create() time, never baked into the image.
   .setEnvs({
-    ORY_PERMISSION_MODE: "observe",
-    ORY_PERMISSION_NAMESPACE: "AgentTools",
+    ORY_PERMISSION_NAMESPACE: "AgentTool",
     ORY_AGENT_DEBUG: "true",
     ORY_AGENT_LOG_FILE: "/root/ory-agent-debug.log",
   })
@@ -114,9 +113,10 @@ E2B_API_KEY=e2b_***
 # the template. Listed here so operators know what to plumb through.
 ORY_PROJECT_URL=https://<slug>.projects.oryapis.com
 ORY_OAUTH2_CLIENT_ID=
-ORY_USER_SESSION_TOKEN=
+ORY_USER_OAUTH2_TOKEN=
 # Optional: pin a static agent identity instead of DCR.
-# ORY_AGENT_API_KEY=
+# ORY_AGENT_CLIENT_ID=
+# ORY_AGENT_CLIENT_SECRET=
 ```
 
 ### `integrations/e2b/package.json`
@@ -152,8 +152,8 @@ Generate a README that captures:
   `npm run build:prod`.
 - A `Sandbox.create("agent-ory", { envs: { ... } })` example showing which env
   vars to inject at runtime (`ORY_PROJECT_URL`, `ORY_OAUTH2_CLIENT_ID`,
-  `ORY_USER_SESSION_TOKEN` or `ORY_USER_OAUTH2_TOKEN`, optional
-  `ORY_AGENT_API_KEY`).
+  `ORY_USER_OAUTH2_TOKEN`, optional
+  `ORY_AGENT_CLIENT_ID` + `ORY_AGENT_CLIENT_SECRET`).
 - A pointer to `/project:ory-auth-setup` for full env-var coverage and to
   `/project:ory-local-dev` for testing the same plugin locally before publishing the
   template.
@@ -189,7 +189,7 @@ const sbx = await Sandbox.create("agent-ory", {
     ORY_PROJECT_URL: process.env.ORY_PROJECT_URL!,
     ORY_OAUTH2_CLIENT_ID: process.env.ORY_OAUTH2_CLIENT_ID!,
     // Pre-supply a user token so the headless sandbox skips PKCE.
-    ORY_USER_SESSION_TOKEN: process.env.ORY_USER_SESSION_TOKEN!,
+    ORY_USER_OAUTH2_TOKEN: process.env.ORY_USER_OAUTH2_TOKEN!,
   },
 });
 
@@ -197,18 +197,19 @@ await sbx.commands.run("ory-claude --version");  // sanity check
 ```
 
 Sandboxes are headless, so the user **must** pre-supply
-`ORY_USER_SESSION_TOKEN` or `ORY_USER_OAUTH2_TOKEN` — otherwise user login's
+`ORY_USER_OAUTH2_TOKEN` — otherwise user login's
 PKCE browser flow has no target and hangs. See `/project:ory-auth-setup` for the full
 env-var matrix.
 
 ## Step 5 — Promotion path
 
-The template ships with `ORY_PERMISSION_MODE=observe` baked in so first-run
-sandboxes never block. To promote a sandbox to hard enforcement without
-rebuilding the template, either pass `ORY_PERMISSION_MODE=enforce` at
-`Sandbox.create()` time, or run `npx -y -p @ory/claude-code ory-claude permissions enforce` inside a running
-sandbox. Run `npx -y -p @ory/claude-code ory-claude permissions bootstrap` first on a fresh Ory project so
-the `use` tuples exist before enforcement turns on.
+A sandbox starts in observe mode, so first-run sandboxes never block. The
+deny posture is a property of the **Ory project**, read on every session: an
+admin promotes it to `enforce` in the Ory Console (Agent Security), project-wide
+or for a single principal, and running sandboxes pick that up without a rebuild.
+Grant `use` on the tools first, also in the Console — otherwise flipping to
+enforce blocks everything. Check what a sandbox resolves with
+`npx -y -p @ory/claude-code ory-claude permissions`.
 
 ## What this skill does NOT do
 

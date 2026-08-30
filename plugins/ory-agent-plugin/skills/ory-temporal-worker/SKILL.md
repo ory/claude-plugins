@@ -1,6 +1,6 @@
 ---
 name: ory-temporal-worker
-description: Scaffold a [Temporal](https://temporal.io) TypeScript worker where every Activity execution is gated by Ory — the user is authenticated, the worker's agent identity is resolved via DCR, each Activity invocation runs an Ory Permission check, and the full lifecycle emits trace spans. Use when the user asks to "add Ory to my Temporal worker", "wire Ory permissions into Temporal activities", "create a Temporal worker with Ory auth", "build a Temporal TypeScript project with the Ory agent client", or any close variant. The skill scaffolds the project in the user's repo following <https://docs.temporal.io/develop/typescript/set-up-your-local-typescript> — it does not run the worker.
+description: Scaffold a [Temporal](https://temporal.io) TypeScript worker where every Activity execution is gated by Ory — the user is authenticated, the worker's agent identity is resolved via DCR, each Activity invocation runs an Ory Permission check, and the full lifecycle emits structured activity events. Use when the user asks to "add Ory to my Temporal worker", "wire Ory permissions into Temporal activities", "create a Temporal worker with Ory auth", "build a Temporal TypeScript project with the Ory agent client", or any close variant. The skill scaffolds the project in the user's repo following <https://docs.temporal.io/develop/typescript/set-up-your-local-typescript> — it does not run the worker.
 ---
 
 # Ory-authed Temporal TypeScript worker
@@ -9,7 +9,7 @@ You are helping the user scaffold a [Temporal](https://temporal.io) TypeScript
 worker where every Activity execution is gated by Ory: the user is
 authenticated, the worker's agent identity is resolved via OAuth2 Dynamic Client
 Registration, each Activity invocation runs an Ory Permission check, and the
-full lifecycle emits trace spans. **Workflows stay deterministic** — only
+full lifecycle emits structured activity events. **Workflows stay deterministic** — only
 Activities call out to Ory.
 
 This skill carries the workflow. You generate the files in the user's repo; the
@@ -70,7 +70,7 @@ import {
 } from "@ory/argus";
 
 // One client per worker process. `harness` is a label that shows up on
-// every trace span so worker-originated audit lives in its own namespace
+// every activity event so worker-originated audit lives in its own namespace
 // alongside the CLI plugins.
 const ory = OryAgentClient.fromEnv("temporal");
 
@@ -84,7 +84,7 @@ function bootstrap(): Promise<void> {
         binName: "temporal-worker",
         harness: "temporal",
         // The user gate runs every invocation and never blocks: it refreshes
-        // tokens and emits the audit span, but the worker proceeds even if the
+        // tokens and emits the audit event, but the worker proceeds even if the
         // user is unauthenticated. Enforcement happens at the per-Activity
         // permission check (permissionMode).
       });
@@ -102,13 +102,13 @@ async function gate(toolName: string, userSubject: string): Promise<void> {
   const decision = await checkAndDecide(
     ory,
     {
-      namespace: process.env.ORY_PERMISSION_NAMESPACE ?? "AgentTools",
+      namespace: process.env.ORY_PERMISSION_NAMESPACE ?? "AgentTool",
       object: toolName,
       relation: "use",
       ...subject,
     },
     {
-      spanAttributes: {
+      activityAttributes: {
         toolName,
         workflowId: Context.current().info.workflowExecution.workflowId,
         activityId: Context.current().info.activityId,
@@ -147,9 +147,9 @@ Key choices:
   identity, but always proceeds. Enforcement is at the permission check, which
   throws on deny — Temporal will mark the Activity as failed and surface the
   error via the Workflow result or retry policy.
-- **`harness: "temporal"`.** Distinguishes worker-originated spans in the trace
-  file from CLI plugin spans.
-- **Span attributes carry the Workflow + Activity IDs.** This is how operators
+- **`harness: "temporal"`.** Distinguishes worker-originated events in the
+  unified activity log.
+- **Activity attributes carry the Workflow + Activity IDs.** This is how operators
   correlate Ory denials back to Temporal executions in the Web UI.
 
 ## Step 4 — Pass the user subject through the Workflow
@@ -215,7 +215,7 @@ cd temporal-worker
 export ORY_PROJECT_URL=http://localhost:4000
 export ORY_AUTH_GATE=1
 export ORY_AGENT_DEBUG=true
-export ORY_AGENT_TRACE_FILE=$PWD/ory-trace.ndjson
+export ORY_AGENT_LOG_FILE=$PWD/ory-agent-debug.log
 npm run start                 # boots the worker, polls task queue
 ```
 
@@ -226,49 +226,47 @@ cd temporal-worker
 npm run workflow
 ```
 
-Tail the trace file to confirm the gates fired:
+Tail the activity log to confirm the gates fired:
 
 ```bash
-tail -f ory-trace.ndjson | jq .
+tail -f ory-agent-debug.log | jq .
 ```
 
 You should see:
 
-- exactly one `user.auth` span (the worker's first Activity triggered
+- exactly one `user.auth` activity event (the worker's first Activity triggered
   `bootstrap()`),
-- exactly one `agent.auth` span,
-- one `tool.invoke` (allow) or `tool.block` (deny) span **per Activity
+- exactly one `agent.auth` activity event,
+- one `tool.invoke` (allow) or `tool.block` (deny) event **per Activity
   execution**.
 
-The Workflow itself produces no Ory spans — only its Activities do.
+The Workflow itself produces no Ory activity — only its Activities do.
 
 ## Step 6 — Promotion from observe to enforce
 
 The worker starts in `observe` mode by default: denies pass through but each is
-recorded as a `permission.observe_deny` audit span. Once the user has confirmed
-the deny set is what they expect, promote to enforcement:
+recorded as a `permission.observe_deny` activity event. Once the user has confirmed
+the deny set is what they expect, an admin promotes the posture to `enforce` in
+the Ory Console (Agent Security). It is a permission on the project, read on
+every session, so the worker picks it up on its next run with no redeploy.
 
-```bash
-export ORY_PERMISSION_MODE=enforce
-```
+On a hosted Ory project, grant `use` on each Activity name (`send_email`, …) in
+the Ory Console (Agent Security) before promoting the posture there — otherwise
+enforcement blocks every Activity. See `/project:ory-permissions-onboarding`.
 
-On a fresh Ory project, run the permissions bootstrap once before flipping the
-switch so the `use` tuples for each Activity name (`send_email`, …) exist —
-see `/project:ory-permissions-onboarding`.
-
-To exercise the deny path locally, write a tuple that explicitly removes `use`
-for the test user against one Activity object, kick the Workflow, and watch the
-Activity fail with the `Ory denied use of …` error in the Temporal Web UI.
+To exercise the deny path locally, kick the Workflow with an Activity name the
+local stack never granted, and watch it fail with the `Ory denied use of …`
+error in the Temporal Web UI.
 
 ## Step 7 — Beyond the dev server
 
 This skill stops at the local dev server. For production:
 
-- Pin a static agent identity with `ORY_AGENT_API_KEY` (single key) or
-  `ORY_AGENT_CLIENT_ID + ORY_AGENT_CLIENT_SECRET` (client_credentials) so the
-  worker doesn't re-register on every cold start.
-- Persist the worker's `ory-trace.ndjson` somewhere durable, or replace the
-  file tracer with an OpenTelemetry exporter wired up around `ory.tracer`.
+- Pin a static agent identity with `ORY_AGENT_CLIENT_ID +
+  ORY_AGENT_CLIENT_SECRET` (client_credentials) so the worker doesn't
+  re-register on every cold start.
+- Set retention and access controls for the worker's unified activity log.
+  Ory Agent Security owns service telemetry; the worker does not export traces.
 - Use Temporal Cloud or a self-hosted Temporal cluster instead of
   `temporal server start-dev`; the worker code does not change.
 
