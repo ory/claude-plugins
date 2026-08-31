@@ -94,7 +94,7 @@ Everything the plugin does is observable out of the box:
 Once connected, the deny posture lives on the Ory project: when the observe-mode activity looks right, an admin promotes it to **enforce** in the **Ory Console** (Agent Security). Every session reads that posture live, so nothing has to be reinstalled.
 
 ```bash
-npx -y -p @ory/claude-code ory-claude permissions   # what the project grants, and the live mode
+npx -y -p @ory/claude-code ory-claude permissions   # native allowed/blocked state and live mode
 ```
 
 Then a denied tool is actually blocked and Claude shows why.
@@ -119,7 +119,7 @@ npx -y -p @ory/claude-code ory-claude configure \
 
 **Ory Network or OEL.** Either works. For an Ory Network project the URL is `https://<slug>.projects.oryapis.com`; for a self-hosted **Ory Enterprise License** deployment, point `--project-url` at that deployment's base URL and use the sign-in client id from its Agent Security configuration. Everything downstream — sign-in, checks, delegation — is identical.
 
-**There is nothing else for you to create.** The sign-in client, the permission model, the per-tool grants and blocks, and the observe/enforce posture are all provisioned in the Console by someone with project access. At runtime the plugin only *reads* permissions — it has no write path into your project, which is why installing it needs no workspace privilege. Each Claude session registers its own identity automatically on first use.
+**There is nothing else for you to create.** The sign-in client, permission model, native-tool blocks, MCP grants, and observe/enforce posture are provisioned in the Console by someone with project access. At runtime the plugin only *reads* permissions, so installing it needs no workspace privilege. Each Claude session registers its own identity automatically on first use.
 
 Sign-in runs at the start of every session and never blocks — a declined, skipped, or timed-out login simply leaves that session without a user identity.
 
@@ -129,8 +129,8 @@ Settings are saved to `~/.config/ory-agent-plugins/config.json` and shared acros
 
 ```
 ory-claude install | uninstall        Install (add --project-url to also connect Agent Security) / remove
-ory-claude status                     Show configuration, identities, permission coverage, recent activity
-ory-claude permissions <cmd>          status  (read-only; grants + posture live in the Ory Console)
+ory-claude status                     Show configuration, identities, native tool access, recent activity
+ory-claude permissions <cmd>          status  (read-only; blocks + posture live in the Ory Console)
 ory-claude configure <flags>          Connect a project (--project-url) or --disconnect
 ory-claude agent <status|unregister>  Manage Claude's own auto-created identity
 ory-claude local <up|down|status|…>   Run / manage a local Ory in Docker

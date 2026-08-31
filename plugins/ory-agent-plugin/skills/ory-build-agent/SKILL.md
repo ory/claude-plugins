@@ -361,7 +361,8 @@ PKCE flow, permission tuples, and activity events are all visible:
    `jq` — you
    should see `user.auth` → `agent.auth` → `permission.check` →
    `tool.complete` for every call.
-5. Promote to enforce once the tools are granted. The posture is a
+5. Native tools are allowed unless explicitly blocked. Promote to enforce once
+   the block policy is ready. The posture is a
    permission on the Ory project, read on every session — an admin sets it
    in the Ory Console (Agent Security); see the resolved value with
    `... permissions` via any harness CLI (same shared config file).
@@ -376,9 +377,9 @@ For full env-var coverage (including the user/agent split,
 - It does not generate the agent. The user owns the agent loop, tool
   catalog, and deployment shape. This skill only drops `@ory/argus` into
   whatever they already have.
-- It does not grant permissions. Those are provisioned in the Ory Console
-  (Agent Security); `@ory/argus` only reads them. Locally, the dev stack's
-  seed step grants the catalog for you.
+- It does not write permissions. Native-tool blocks and MCP grants are
+  provisioned in the Ory Console (Agent Security); `@ory/argus` only reads
+  them. The local seed writes no baseline native-tool grants.
 - It does not adapt one of the existing harness plugins (`@ory/claude-code`,
   `@ory/codex`, `@ory/gemini-cli`, `@ory/openclaw`, `@ory/opencode`). Those
   are for users running those harnesses — not building a custom agent.

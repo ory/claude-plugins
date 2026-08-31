@@ -244,19 +244,19 @@ The Workflow itself produces no Ory activity — only its Activities do.
 
 ## Step 6 — Promotion from observe to enforce
 
-The worker starts in `observe` mode by default: denies pass through but each is
-recorded as a `permission.observe_deny` activity event. Once the user has confirmed
-the deny set is what they expect, an admin promotes the posture to `enforce` in
+The worker starts in `observe` mode by default: explicit blocks pass through but
+each is recorded as a `permission.block_observed` activity event. Once the user
+has confirmed the block set is what they expect, an admin promotes the posture to `enforce` in
 the Ory Console (Agent Security). It is a permission on the project, read on
 every session, so the worker picks it up on its next run with no redeploy.
 
-On a hosted Ory project, grant `use` on each Activity name (`send_email`, …) in
-the Ory Console (Agent Security) before promoting the posture there — otherwise
-enforcement blocks every Activity. See `/project:ory-permissions-onboarding`.
+Activities are allowed by default. Add `blockedSubjects` relations for Activity
+names that must not run, then review them before promoting the posture. See
+`/project:ory-permissions-onboarding`.
 
-To exercise the deny path locally, kick the Workflow with an Activity name the
-local stack never granted, and watch it fail with the `Ory denied use of …`
-error in the Temporal Web UI.
+To exercise the deny path locally, add a `blockedSubjects` relation for an
+Activity name, kick the Workflow, and watch the explicit-block error in the
+Temporal Web UI.
 
 ## Step 7 — Beyond the dev server
 
