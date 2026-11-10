@@ -46,6 +46,8 @@ Installing the plugin drops the full Ory playbook catalog into Claude Code. **Sk
 | `ory-local-dev` | Develops and tests login/permission flows against a local Ory — no project, no account, offline |
 | `ory-permissions-onboarding` | Walks a fresh install from observe mode to enforced per-tool permissions without getting blocked |
 | `ory-build-agent` | Drops `@ory/argus` into an agent *you* own — Claude Agent SDK, OpenAI Agents, Mastra, Vercel AI, LangGraph/PydanticAI |
+| `ory-deploy-agent` | Builds and deploys the canonical Claude Agent SDK agent through Agent Security with a generated runtime credential and Docker Compose |
+| `ory-deploy-openai-e2b` | Builds and deploys a Python OpenAI Agents application on E2B with an immutable template and generated Talos runtime credential |
 | `ory-build-integration` | Wires Ory into your app: Action webhooks, JWT validation at a gateway, live event streams |
 | `ory-contribute-integration` | Authors and submits an integration to the public `ory/integrates` registry |
 | `ory-e2b-sandbox` | Scaffolds an E2B sandbox template that boots with this plugin preinstalled |
@@ -75,6 +77,8 @@ Once you connect to Ory Agent Security, two more things happen automatically:
 - **What it's allowed to do.** Before a tool runs, Ory checks whether it's permitted. It starts in **observe mode** — nothing is blocked, you just *see* what would be — so it never gets in your way on day one.
 
 If Ory is ever unreachable, the plugin gets out of the way and lets Claude keep working — so it can't lock you out.
+
+**MCP servers.** Claude Code names MCP tools `mcp__<server>__<tool>`, so each call is checked against both the server and the tool. The plugin reports the name Claude Code uses, and Ory Agent Security matches it to the MCP server it was configured for. For a server configured in the managed `managed-mcp.json`, the project `.mcp.json`, `~/.claude.json` (user or per-project servers), or an installed plugin's `.mcp.json` or `plugin.json` (`mcp__plugin_<plugin>_<server>__<tool>`), the plugin also sends hashed fingerprints of its launch command or URL, so a well-known server is recognized even under a custom name such as `gh`. Servers passed with `--mcp-config` are not visible to hooks and are matched by name only. Because Agent Security never lets a name override a fingerprint, a custom server named after a well-known one is governed as uncatalogued. Only each server's `command`, `args`, and `url` are read, and only their hashes are sent; `env` and `headers` are never read. claude.ai connectors (`mcp__claude_ai_<Name>__<tool>`) and Claude Desktop Cowork connectors named by UUID are matched on the service side from their name and tool. A server Agent Security cannot identify falls under its Uncatalogued servers level. `ReadMcpResourceTool` and `ListMcpResourcesTool` calls that name a server are checked against that server as well as the native tool, so a disabled or No access server's resources cannot be read; listing resources across every server is checked as the native tool only.
 
 ### See what's happening
 
@@ -119,7 +123,7 @@ npx -y -p @ory/claude-code ory-claude configure \
 
 **Ory Network or OEL.** Either works. For an Ory Network project the URL is `https://<slug>.projects.oryapis.com`; for a self-hosted **Ory Enterprise License** deployment, point `--project-url` at that deployment's base URL and use the sign-in client id from its Agent Security configuration. Everything downstream — sign-in, checks, delegation — is identical.
 
-**There is nothing else for you to create.** The sign-in client, permission model, native-tool blocks, MCP grants, and observe/enforce posture are provisioned in the Console by someone with project access. At runtime the plugin only *reads* permissions, so installing it needs no workspace privilege. Each Claude session registers its own identity automatically on first use.
+**There is nothing else for you to create.** The sign-in client, permission model, native-tool blocks, MCP server access, and observe/enforce posture are provisioned in the Console by someone with project access. At session start the plugin loads or enrolls Claude's Talos runtime credential in the OS credential store; tool paths only read it. Installing needs no workspace privilege.
 
 Sign-in runs at the start of every session and never blocks — a declined, skipped, or timed-out login simply leaves that session without a user identity.
 
@@ -132,7 +136,7 @@ ory-claude install | uninstall        Install (add --project-url to also connect
 ory-claude status                     Show configuration, identities, native tool access, recent activity
 ory-claude permissions <cmd>          status  (read-only; blocks + posture live in the Ory Console)
 ory-claude configure <flags>          Connect a project (--project-url) or --disconnect
-ory-claude agent <status|unregister>  Manage Claude's own auto-created identity
+ory-claude agent <status|unregister>  Inspect runtime status / clear legacy OAuth state
 ory-claude local <up|down|status|…>   Run / manage a local Ory in Docker
 ory-claude version                    Print plugin, core, and Node versions (--json for machine-readable)
 ```
@@ -142,7 +146,7 @@ All prefixed with `npx -y -p @ory/claude-code`.
 ## Troubleshooting
 
 - **`local-up` fails** — make sure Docker is running and ports `4000`, `4100`, and `4455` are free.
-- **Browser sign-in loops** (after connecting) — reset with `ory-claude agent unregister` and try again.
+- **Browser sign-in loops** (after connecting) — confirm the reserved login client has all four documented loopback redirect URIs; `agent unregister` only clears legacy agent OAuth state.
 - **Running an older CLI than expected** — `npx -p @ory/claude-code` (no version pin) reuses a previously-downloaded copy instead of re-resolving to the latest. The install banner prints the running version; confirm it with `npx -y -p @ory/claude-code ory-claude version`. To force the current release, clear the cache and reinstall: `rm -rf ~/.npm/_npx` then `npx -y -p @ory/claude-code ory-claude install`. Pinning an exact version (`@ory/claude-code@<version>`) also bypasses the cached copy.
 - **Hooks stuck on an old version** — run `/plugin marketplace update ory` inside Claude Code, or re-run the installer.
 

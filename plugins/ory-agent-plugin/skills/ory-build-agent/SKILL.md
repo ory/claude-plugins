@@ -143,9 +143,9 @@ for await (const msg of stream) { /* standard handling */ }
 ```
 
 `canUseTool` only fires for tools the SDK controls. If the agent also
-registers MCP servers, wrap each MCP tool handler the same way — see the
-`@ory/argus` `parseClaudeCodeMcpTool` / `checkMcpPermission` helpers for an
-MCP-flavored version of the gate.
+registers MCP servers, gate each MCP tool handler the same way and pass
+`mcpTool` (from the `@ory/argus` `parseClaudeCodeMcpTool` or `parseMcpToolName`
+helpers) so the call is checked against the project's MCP server access.
 
 ### OpenAI Agents SDK
 
@@ -370,14 +370,14 @@ PKCE flow, permission tuples, and activity events are all visible:
    survives across runs.
 
 For full env-var coverage (including the user/agent split,
-`ORY_USER_SUBJECT_NAMESPACE`, agent DCR knobs), see `/project:ory-auth-setup`.
+`ORY_USER_SUBJECT_NAMESPACE`, and `ORY_AGENT_API_KEY`), see `/project:ory-auth-setup`.
 
 ## What this skill does NOT do
 
 - It does not generate the agent. The user owns the agent loop, tool
   catalog, and deployment shape. This skill only drops `@ory/argus` into
   whatever they already have.
-- It does not write permissions. Native-tool blocks and MCP grants are
+- It does not write permissions. Native-tool blocks and MCP server access are
   provisioned in the Ory Console (Agent Security); `@ory/argus` only reads
   them. The local seed writes no baseline native-tool grants.
 - It does not adapt one of the existing harness plugins (`@ory/claude-code`,

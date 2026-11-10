@@ -1,6 +1,6 @@
 ---
 name: ory-permissions-onboarding
-description: Onboard native agent-tool authorization with default allow and explicit deny overrides. Covers connecting the plugin, reviewing allowed and blocked tools, writing blocks in the Ory Console, and promoting the project from observe to enforce. MCP and PermissionMode remain grant-based.
+description: Onboard native agent-tool authorization with default allow and explicit deny overrides. Covers connecting the plugin, reviewing allowed and blocked tools, writing blocks in the Ory Console, and promoting the project from observe to enforce. MCP servers use the same block model; PermissionMode remains grant-based.
 ---
 
 # Onboard Ory Permissions for Agent Tool Calls
@@ -9,7 +9,7 @@ Help the user connect Agent Security and roll out explicit native-tool blocks
 without treating missing grants as denials.
 
 **The plugin only reads permissions. It never writes them.** The permission
-model, native-tool blocks, MCP grants, and observe/enforce posture are managed
+model, native-tool blocks, MCP server access, and observe/enforce posture are managed
 in the **Ory Console** (Agent Security).
 
 Native policy is simple:
@@ -18,7 +18,8 @@ Native policy is simple:
 - Their `use` permit is `!blockedSubjects.includes(subject)`.
 - No matching block means allowed; a matching block means denied.
 - `observe` logs the block and proceeds; `enforce` vetoes the call.
-- MCP permissions and `PermissionMode#enforcedSubjects` remain grant-based.
+- MCP calls use the same model in `McpServer` and `McpTool`.
+- `PermissionMode#enforcedSubjects` remains grant-based.
 
 ## 1. Connect Agent Security
 
@@ -78,8 +79,10 @@ Blocks can also target the project, an agent credential, an agent session, a
 sub-agent credential, or a sub-agent spawn. Group/SubjectSet expansion is
 supported. A native deny is always an explicit block, never a missing grant.
 
-MCP is intentionally different: continue granting MCP server/tool access with
-its existing `users`/`use` and `invoke` relations.
+MCP calls are checked as `McpServer:<server>#use` and
+`McpTool:<server>:<tool>#use`, where `<server>` is the lowercased configured
+server name. Set Admin, Write, Read, or No access per well-known server in the
+Ory Console (Agent Security → Enforce → MCP servers); there is nothing to grant.
 
 ## 4. Observe Before Enforcing
 

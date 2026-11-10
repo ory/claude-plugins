@@ -5,6 +5,11 @@ description: Scaffold an E2B (e2b.dev) sandbox template that boots with @ory/cla
 
 # E2B sandbox with Ory agent security
 
+> **Agent SDK deployment:** If the user owns an OpenAI Agents SDK application and
+> wants Agent Security to issue its headless runtime identity, do not use this
+> coding-harness image recipe. Use `/project:ory-deploy-openai-e2b` for the complete
+> `ory-agent`, Talos, immutable-template, and trusted-controller workflow.
+
 You are helping the user scaffold an [E2B](https://e2b.dev) sandbox template
 that preinstalls and registers the @ory/claude-code plugin. The resulting template
 publishes a named image; every `Sandbox.create("<tag>")` call from their SDK
@@ -114,9 +119,9 @@ E2B_API_KEY=e2b_***
 ORY_PROJECT_URL=https://<slug>.projects.oryapis.com
 ORY_OAUTH2_CLIENT_ID=
 ORY_USER_OAUTH2_TOKEN=
-# Optional: pin a static agent identity instead of DCR.
-# ORY_AGENT_CLIENT_ID=
-# ORY_AGENT_CLIENT_SECRET=
+# Optional: supply a process-local Talos runtime credential. Otherwise session
+# start loads or enrolls one through the platform's credential-store support.
+# ORY_AGENT_API_KEY=
 ```
 
 ### `integrations/e2b/package.json`
@@ -152,8 +157,7 @@ Generate a README that captures:
   `npm run build:prod`.
 - A `Sandbox.create("agent-ory", { envs: { ... } })` example showing which env
   vars to inject at runtime (`ORY_PROJECT_URL`, `ORY_OAUTH2_CLIENT_ID`,
-  `ORY_USER_OAUTH2_TOKEN`, optional
-  `ORY_AGENT_CLIENT_ID` + `ORY_AGENT_CLIENT_SECRET`).
+  `ORY_USER_OAUTH2_TOKEN`, optional `ORY_AGENT_API_KEY`).
 - A pointer to `/project:ory-auth-setup` for full env-var coverage and to
   `/project:ory-local-dev` for testing the same plugin locally before publishing the
   template.
@@ -196,7 +200,7 @@ const sbx = await Sandbox.create("agent-ory", {
 await sbx.commands.run("ory-claude --version");  // sanity check
 ```
 
-Sandboxes are headless, so the user **must** pre-supply
+Sandboxes using this interactive coding-harness recipe are headless, so the user **must** pre-supply
 `ORY_USER_OAUTH2_TOKEN` — otherwise user login's
 PKCE browser flow has no target and hangs. See `/project:ory-auth-setup` for the full
 env-var matrix.

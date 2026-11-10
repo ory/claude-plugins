@@ -1,6 +1,6 @@
 ---
 name: ory-temporal-worker
-description: Scaffold a [Temporal](https://temporal.io) TypeScript worker where every Activity execution is gated by Ory — the user is authenticated, the worker's agent identity is resolved via DCR, each Activity invocation runs an Ory Permission check, and the full lifecycle emits structured activity events. Use when the user asks to "add Ory to my Temporal worker", "wire Ory permissions into Temporal activities", "create a Temporal worker with Ory auth", "build a Temporal TypeScript project with the Ory agent client", or any close variant. The skill scaffolds the project in the user's repo following <https://docs.temporal.io/develop/typescript/set-up-your-local-typescript> — it does not run the worker.
+description: Scaffold a [Temporal](https://temporal.io) TypeScript worker where every Activity execution is gated by Ory — the user is authenticated, the worker resolves an injected or Talos runtime identity, each Activity invocation runs an Ory Permission check, and the full lifecycle emits structured activity events. Use when the user asks to "add Ory to my Temporal worker", "wire Ory permissions into Temporal activities", "create a Temporal worker with Ory auth", "build a Temporal TypeScript project with the Ory agent client", or any close variant. The skill scaffolds the project in the user's repo following <https://docs.temporal.io/develop/typescript/set-up-your-local-typescript> — it does not run the worker.
 ---
 
 # Ory-authed Temporal TypeScript worker
@@ -262,9 +262,9 @@ Temporal Web UI.
 
 This skill stops at the local dev server. For production:
 
-- Pin a static agent identity with `ORY_AGENT_CLIENT_ID +
-  ORY_AGENT_CLIENT_SECRET` (client_credentials) so the worker doesn't
-  re-register on every cold start.
+- Inject a runtime request authenticator from the workload platform, or provide
+  `ORY_AGENT_API_KEY` through the deployment secret manager. Do not bake a
+  runtime credential into the worker image.
 - Set retention and access controls for the worker's unified activity log.
   Ory Agent Security owns service telemetry; the worker does not export traces.
 - Use Temporal Cloud or a self-hosted Temporal cluster instead of

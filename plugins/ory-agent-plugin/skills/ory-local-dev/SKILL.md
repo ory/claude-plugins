@@ -114,13 +114,39 @@ do not need the env var.
 
 ## Step 4: Build the auth UI
 
-Use the existing skills for the UI layer — they apply unchanged when
-the SDK points at the local gateway:
+Use the existing skills for the UI layer:
 
 - `/project:ory-auth-setup` — full Ory Elements bootstrap (this is the
   default UI path, including against the local stack).
 - `/project:ory-login-flow` — login, registration, recovery,
   verification, settings pages.
+
+By default the local stack sends every Kratos flow to its bundled login UI
+on `:4455` and only accepts `return_to` URLs for the Console. Your app's
+`/auth/*` pages are never reached, and `return_to=http://localhost:3000`
+fails with `self_service_flow_return_to_forbidden`. Point the stack at the
+app instead by bringing it up with `ORY_LOCAL_APP_URL` set to the app's
+origin:
+
+```bash
+ORY_LOCAL_APP_URL=http://localhost:3000 npx -y -p @ory/claude-code ory-claude local up
+```
+
+Kratos then redirects login, registration, settings, and error flows to
+`<app>/auth/login`, `/auth/registration`, `/auth/settings`, and
+`/auth/error`, accepts the app origin as a `return_to`, allows it as the
+CORS origin for the browser's cookie-bearing Ory Elements calls, and lands
+there after a flow. Use those exact routes. Do not edit the generated
+`.ory-dev/ory/kratos/kratos.yml`: `local up` and `local reset` regenerate it.
+Re-run `local up` with the variable to apply a change to a running stack.
+
+Two limits apply to the local stack:
+
+- Recovery and verification are disabled (there is no mail courier), so
+  skip those pages or test them against an Ory Network project.
+- Hydra's login and consent stay on the bundled UI, but Kratos's login page
+  is shared, so an OAuth2 login started through Hydra (including the
+  plugin's own) renders the app's login page while the variable is set.
 
 **Skip the Ory Tunnel step** when developing against the local stack.
 The tunnel only exists to bridge cookies between localhost and Ory
@@ -132,8 +158,8 @@ directly.
 Two ways to exercise the flows:
 
 1. **Browser flow (registration UI)** — register a brand new identity
-   through the Elements `<Registration>` page. This validates the
-   self-service flow end-to-end.
+   through the Elements `<Registration>` page. Registration signs the new
+   identity in. This validates the self-service flow end-to-end.
 2. **Seeded identity (admin-created)** — log in as `agent@ory-local.dev`
    with password `ory-agent-local-dev-password!` to test session-bearing
    pages without going through registration.
@@ -196,10 +222,14 @@ plugin updates the bundled service configs.
 - **Login works but `whoami` returns 401** — the cookie domain is
   wrong. Make sure the app runs on `http://localhost` (not `127.0.0.1`)
   and the SDK URL is exactly `http://localhost:4000`.
-- **CORS errors from the browser** — the gateway accepts requests from
-  any localhost port. If the app is on `http://localhost:3000`, no CORS
-  config change is needed. For non-localhost dev URLs, switch back to
-  the Ory Tunnel + a Network project.
+- **Login redirects to `:4455`, or `return_to` is "not allowed"** — the
+  stack was started without `ORY_LOCAL_APP_URL`. Re-run `local up` with it
+  set to the app's origin (see Step 4).
+- **CORS errors from the browser** (`Unable to call the API endpoint`) —
+  Kratos only allows credentialed requests from `ORY_LOCAL_APP_URL`. Re-run
+  `local up` with it set to the exact origin the browser shows, including
+  the port. For non-localhost dev URLs, switch back to the Ory Tunnel + a
+  Network project.
 - **Permission checks always deny** — the seeded tuples live in the
   `AgentTool` namespace. If your app uses a different namespace, set
   `ORY_PERMISSION_NAMESPACE` before `local seed`, or write the tuples
