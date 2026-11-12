@@ -12,9 +12,11 @@ One command installs two independent halves:
 ## What you'll need
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code), installed and signed in
+<!-- BEGIN GENERATED requirements -->
 - Node.js **22 or newer**
 - [Docker](https://docs.docker.com/get-docker/) — only if you want to run Ory locally
 - macOS or Linux (Windows works via WSL2)
+<!-- END GENERATED requirements -->
 
 ## Get started
 
@@ -105,6 +107,7 @@ Then a denied tool is actually blocked and Claude shows why.
 
 ## Connect to Ory Agent Security
 
+<!-- BEGIN GENERATED connect -->
 Copy the connection details from the [Ory Console](https://console.ory.sh) under **Agent Security**:
 
 | Value | Flag | Environment variable |
@@ -128,6 +131,7 @@ npx -y -p @ory/claude-code ory-claude configure \
 Sign-in runs at the start of every session and never blocks — a declined, skipped, or timed-out login simply leaves that session without a user identity.
 
 Settings are saved to `~/.config/ory-agent-plugins/config.json` and shared across all your Ory agent plugins; environment variables win when both are set. Running headless with an OAuth2 access token already? Set `ORY_USER_OAUTH2_TOKEN` and the browser step is skipped entirely.
+<!-- END GENERATED connect -->
 
 ## Commands
 
@@ -145,14 +149,16 @@ All prefixed with `npx -y -p @ory/claude-code`.
 
 ## Troubleshooting
 
-- **`local-up` fails** — make sure Docker is running and ports `4000`, `4100`, and `4455` are free.
+- **`local-up` fails** — <!-- BEGIN GENERATED local-stack-ports -->make sure Docker is running and ports `4000`, `4100`, and `4455` are free.<!-- END GENERATED local-stack-ports -->
 - **Browser sign-in loops** (after connecting) — confirm the reserved login client has all four documented loopback redirect URIs; `agent unregister` only clears legacy agent OAuth state.
 - **Running an older CLI than expected** — `npx -p @ory/claude-code` (no version pin) reuses a previously-downloaded copy instead of re-resolving to the latest. The install banner prints the running version; confirm it with `npx -y -p @ory/claude-code ory-claude version`. To force the current release, clear the cache and reinstall: `rm -rf ~/.npm/_npx` then `npx -y -p @ory/claude-code ory-claude install`. Pinning an exact version (`@ory/claude-code@<version>`) also bypasses the cached copy.
 - **Hooks stuck on an old version** — run `/plugin marketplace update ory` inside Claude Code, or re-run the installer.
 
 ## Learn more
 
+<!-- BEGIN GENERATED ory-links -->
 - [Ory documentation](https://www.ory.com/docs/) · [Ory Console](https://console.ory.sh) · [Ory Elements](https://github.com/ory/elements)
+<!-- END GENERATED ory-links -->
 - [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code)
 
 ## License

@@ -36,7 +36,7 @@ wrap each tool dispatch with the gate from Step 4.
 
 | SDK | Language | Where Ory hooks in |
 |---|---|---|
-| Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) | TypeScript / Python | `canUseTool` callback on `query({...})` |
+| Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) | TypeScript / Python | `PreToolUse` hook on `query({ options: { hooks } })` (or `@ory/claude-agent-sdk`) |
 | OpenAI Agents SDK (`@openai/agents`) | TypeScript | Per-tool `execute` wrapper or `RunHooks.onToolStart` |
 | Salesforce Agentforce (Agent Builder) | declarative + Apex | External Service / side-car — see "Salesforce" below |
 | Mastra (`@mastra/core`) | TypeScript | Higher-order wrapper around each tool's `execute` |
@@ -119,22 +119,41 @@ complete(client, { toolName, output });
 
 ### Claude Agent SDK
 
-The Claude Agent SDK exposes a `canUseTool` callback that fires before every
-tool invocation. Drop the gate there:
+Prefer `@ory/claude-agent-sdk`: `createOryHooks()` wires every hook below. To wire
+it by hand, gate in a `PreToolUse` hook. It runs for every tool call, including
+tools the SDK auto-approves. Do not rely on `canUseTool` for enforcement: the SDK
+never calls it for auto-approved tools (`allowedTools`, `bypassPermissions`,
+`acceptEdits`, read-only Bash, reads inside the working directory).
 
 ```ts
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query, type HookCallback, type PreToolUseHookInput } from "@anthropic-ai/claude-agent-sdk";
+import { parseClaudeCodeMcpTool } from "@ory/argus";
+
+const oryPreToolUse: HookCallback = async (input) => {
+  const { tool_name, tool_input } = input as PreToolUseHookInput;
+  const result = await gate(client, {
+    harness: "my-agent",
+    toolName: tool_name,
+    toolArgs: tool_input,
+    mcpTool: parseClaudeCodeMcpTool(tool_name) ?? undefined,
+  });
+  if (!result.blocked) return {};
+  return {
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: result.denialMessage,
+    },
+  };
+};
 
 const stream = query({
   prompt,
   options: {
-    canUseTool: async (toolName, input, { signal }) => {
-      const sessionId = currentSessionId(); // your own correlation id
-      const gate = await gateTool(toolName, sessionId);
-      if (!gate.allow) {
-        return { behavior: "deny", message: gate.message };
-      }
-      return { behavior: "allow", updatedInput: input };
+    hooks: {
+      // Optional: add onFailure: "block" (Agent SDK v0.3.317+) to block the tool if the
+      // hook throws instead of failing open.
+      PreToolUse: [{ hooks: [oryPreToolUse] }],
     },
   },
 });
@@ -142,10 +161,9 @@ const stream = query({
 for await (const msg of stream) { /* standard handling */ }
 ```
 
-`canUseTool` only fires for tools the SDK controls. If the agent also
-registers MCP servers, gate each MCP tool handler the same way and pass
-`mcpTool` (from the `@ory/argus` `parseClaudeCodeMcpTool` or `parseMcpToolName`
-helpers) so the call is checked against the project's MCP server access.
+MCP tools arrive as `mcp__<server>__<tool>`; `parseClaudeCodeMcpTool` turns that
+into the `mcpTool` identity so the call is checked against the project's MCP
+server access.
 
 ### OpenAI Agents SDK
 
